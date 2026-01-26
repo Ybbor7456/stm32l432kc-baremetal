@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define BIT(x) (1UL << (x))
 #define PIN(bank, num) ((((bank) - 'A') << 8) | (num))
@@ -9,12 +10,25 @@
 struct gpio {
   volatile uint32_t MODER, OTYPER, OSPEEDR, PUPDR, IDR, ODR, BSRR, LCKR, AFR[2];
 };
+    // MODER - GPIO functioninality, GPIO -> MDOER
+    // OTYPER - output type register, determines if a pin functions as push-pull or open drain output
+    // OSPEEDR - controls rise and fall times/speed of output or alternate function pins. 
+    // PUPDR - Pulllup and pulldown register, used to contorl if there are itnernal resistors active in pins
+    // IDR - input datat register, used to determine logic high or logic low on pins
+    // ODR - output data register, sets logical output (HIGH/LOW)
+    // BSRR - bit set/reset register, allows to reset or set pins without corruption 
+    // LCKR - GPIO port configuration LoCK Register, used to reset configs until next reset
+    // AFR[] - GPIO Alternate Function Registers, used to map peripheral such as UART/SPI pin to GPIO 
 #define GPIO(bank) ((struct gpio *)(0x48000000u + 0x400u * (bank)))// 0x48e6 is stm32L4 addy 
-// have also tried 0x4800_0000u for GPIOA
+
 
 // Enum values are per datasheet: 0, 1, 2, 3
-enum { GPIO_MODE_INPUT, GPIO_MODE_OUTPUT, GPIO_MODE_AF, GPIO_MODE_ANALOG };
+enum {GPIO_MODE_INPUT, GPIO_MODE_OUTPUT, GPIO_MODE_AF, GPIO_MODE_ANALOG };
 
+struct systick {
+  volatile uint32_t CTRL, LOAD, VAL, CALIB;
+};
+#define SYSTICK ((struct systick *) 0xe000e010) // arm core systck base address
 
 struct rcc {
   volatile uint32_t CR;          // 0x00
@@ -68,54 +82,137 @@ volatile uint32_t CCIPR2;      // 0x9C
 }; 
 
 
+struct usart{
+  volatile uint32_t CR1, CR2, CR3, BRR, GTPR, RTOR, RQR, ISR, ICR, RDR, TDR; 
+};
+// control register 1-3, baud rate reg, guard time prescaler, receive timeout reg, request reg, interrupt and statis reg
+// interrupt flag clear reg, receive data reg, transmit data reg. 
+
+
+#define USART1 ((struct usart *) 0x40013800u)
+#define USART2 ((struct usart *) 0x40004400u)
+#define USART3 ((struct usart *) 0x40004800u)
+#define LPUART1 ((struct usart *) 0x40008000u) // low power UART, asyn only, deep sleep
+
 
 #define RCC ((struct rcc *)0x40021000)
+
+static inline void systick_init(uint32_t ticks) { // stm32l4 runs at 4MHz
+  if ((ticks - 1) > 0xffffff) return;  // Systick timer is 24 bit
+  SYSTICK->LOAD = ticks - 1;
+  SYSTICK->VAL = 0;
+  SYSTICK->CTRL = BIT(0) | BIT(1) | BIT(2);  // Enable systick
+  RCC->APB2ENR |= BIT(0);                   // Enable SYSCFG, bit 0 for smt32l4
+}
 
 static inline void gpio_set_mode(uint16_t pin, uint8_t mode) {
   struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
   int n = PINNO(pin);                      // Pin number
+  RCC->AHB2ENR |= BIT(PINBANK(pin));
   gpio->MODER &= ~(3U << (n * 2));         // Clear existing setting
   gpio->MODER |= (mode & 3) << (n * 2);    // Set new mode
 }
+
+static inline void gpio_set_af(uint16_t pin, uint8_t af_num) {
+  struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
+  int n = PINNO(pin);                      // Pin number
+  gpio->AFR[n >> 3] &= ~(15UL << ((n & 7) * 4)); // clears
+  gpio->AFR[n >> 3] |= ((uint32_t) af_num) << ((n & 7) * 4); // sets 
+}
+
 
 static inline void gpio_write(uint16_t pin, bool val) {
   struct gpio *gpio = GPIO(PINBANK(pin));
   gpio->BSRR = (1U << PINNO(pin)) << (val ? 0 : 16);
 }
 
+static volatile uint32_t s_ticks; // volatile is important!!
+void SysTick_Handler(void) {
+  s_ticks++;
+}
+
+// t: expiration time, prd: period, now: current time. Return true if expired
+bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
+  if (now + prd < *t) *t = 0;                    // Time wrapped? Reset timer
+  if (*t == 0) *t = now + prd;                   // First poll? Set expiration
+  if (*t > now) return false;                    // Not expired yet, return
+  *t = (now - *t) > prd ? now + prd : *t + prd;  // Next expiration time
+  return true;                                   // Expired, return true
+}
+
+#define USART2_FCK 4000000UL  // must match USART2 kernel clock (fCK)
+ // CPU frequency, 4 Mhz
+static inline void uart_init(struct usart *usart, unsigned long baud) {
+  // 
+  uint8_t af = 0;           // Alternate function
+  uint16_t rx = 0, tx = 0;  // pins
+
+  if (usart == USART1) RCC->APB2ENR |= BIT(14); // clock enable bit usart1
+  if (usart == USART2) RCC->APB1ENR1 |= BIT(17); // clock enable bit usart 2
+  //if (usart == USART3) RCC->APB1ENR1 |= BIT(18); //clock enable bit usart3 "usart3 clock enable" ref manual
+  if (usart == LPUART1) RCC->APB1ENR2 |= BIT(0); 
+  // set af = 7 or 8 (for LPUART)
+  if (usart == USART1) af = 7, tx = PIN('A', 9), rx = PIN('A', 10); // design choice, open ended as long as uart tx and rx pins
+  if (usart == USART2) af = 7, tx = PIN('A', 2), rx = PIN('A', 3);
+  // if (usart == USART3) tx = PIN('D', 8), rx = PIN('D', 9); 
+  if (usart == LPUART1) af = 8, tx = PIN('A', 2), rx = PIN('A', 3); 
+
+  gpio_set_mode(tx, GPIO_MODE_AF);
+  gpio_set_af(tx, af);
+  gpio_set_mode(rx, GPIO_MODE_AF);
+  gpio_set_af(rx, af);
+  usart->CR1 = 0;                           // Disable this UART
+  usart->BRR = USART2_FCK / baud;                 // FREQ is a UART bus frequency
+  usart->CR1 |= BIT(0) | BIT(2) | BIT(3);  // Set UE, RE, TE
+  if (tx == 0 && rx == 0) return; // safeguard 
+}
+
+static inline int uart_read_ready(struct usart *usart) {
+  return usart->ISR & BIT(5);  // If RXNE bit is set, data is ready, SR is now ISR due to new IP, bit 5 is still RXNE
+}
+
+static inline uint8_t uart_read_byte(struct usart *usart) {
+  return (uint8_t) (usart->RDR & 255); // DR is now RDR
+}
+
+static inline void uart_write_byte(struct usart *usart, uint8_t byte) {
+  while ((usart->ISR & BIT(7)) == 0) (void)0;  // TXE: TDR empty
+  usart->TDR = byte;
+}
+
+static inline void uart_write_buf(struct usart *usart, char *buf, size_t len) {
+  while (len-- > 0) uart_write_byte(usart, *(uint8_t *) buf++);
+}
+
+/*  REPLACED 
 static inline void spin(volatile uint32_t count) {
   while (count--) {
     __asm volatile ("nop");
   }
 }
+*/
 
 //  GPIOB port 3 has onboard LED 
 
-/*
 int main(void) {
-  uint16_t led = PIN('B', 3);
-
-  RCC->AHB2ENR |= BIT(PINBANK(led));
-  gpio_set_mode(led, GPIO_MODE_OUTPUT);
-
-  gpio_write(led, true);   // should turn LD3 ON (PB3 high)
-  for (;;) (void)0;
-}
-*/ 
-
-int main(void) {
-  uint16_t led = PIN('B', 3);            // Blue LED
-  RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED
+  uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
+  // upper byte stores 01 = B, and lower stores 03 for LED
+  //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
+  uart_init(USART2, 115200);
+  systick_init(4000000 / 1000);         // Tick every 1 ms
   gpio_set_mode(led, GPIO_MODE_OUTPUT);  // Set blue LED to output mode
+  uint32_t timer = 0, period = 500; 
     for (;;) {
-    gpio_write(led, true);
-    spin(200000);
-    gpio_write(led, false);
-    spin(200000);
+      if (timer_expired(&timer, period, s_ticks)) {
+        static bool on;       // This block is executed
+        gpio_write(led, on);  // Every `period` milliseconds
+        on = !on;             // Toggle LED state
+        uart_write_buf(USART2, "hi\r\n", 4);
+      }
+    // Here we could perform other activities!
   }
   return 0; 
 }
-
 
 // Startup code
 __attribute__((naked, noreturn)) void _reset(void) {          //naked=don't generate prologue/epilogue  //noreturn=it will never exit
@@ -130,6 +227,7 @@ __attribute__((naked, noreturn)) void _reset(void) {          //naked=don't gene
 
 extern void _estack(void);  // Defined in link.ld
 
-// 16 standard and 91 STM32-specific handlers
-__attribute__((section(".vectors"))) void (*const tab[16 + 91])(void) = { // defines the interrupt vector table and dumps it into .vectors via the linker script
-    _estack, _reset};
+// 16 standard and 67 STM32l4-specific handlers
+
+__attribute__((section(".vectors"))) void (*const tab[16 + 67])(void) = { // defines the interrupt vector table and dumps it into .vectors via the linker script
+    _estack, _reset, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, SysTick_Handler};

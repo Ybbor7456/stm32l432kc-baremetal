@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.map
+
+# Optional: common extras
+*.d
+*.a
+*.so
+*.exe
