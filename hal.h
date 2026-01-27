@@ -178,7 +178,7 @@ static inline uint8_t uart_read_byte(struct usart *usart) {
 }
 
 // t: expiration time, prd: period, now: current time. Return true if expired
-bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
+static inline bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
   if (now + prd < *t) *t = 0;                    // Time wrapped? Reset timer
   if (*t == 0) *t = now + prd;                   // First poll? Set expiration
   if (*t > now) return false;                    // Not expired yet, return
