@@ -1,6 +1,3 @@
-
-
-
 #pragma once
 
 #include <inttypes.h>
@@ -129,12 +126,86 @@ struct usart{
 // control register 1-3, baud rate reg, guard time prescaler, receive timeout reg, request reg, interrupt and statis reg
 // interrupt flag clear reg, receive data reg, transmit data reg. 
 
+struct i2c{
+  volatile uint32_t CR1, CR2, OAR1, OAR2, TIMINGR, TIMEOUTR, ISR, ICR, PECR, RXDR, TXDR; 
+}; 
+/* control reg 1-3, Own address reg 1&2, timing register, timeout register,interrupt and status
+  interrupt clear, packet error checking register, receive data, transmit data. 
+*/
+
 #define USART1 ((struct usart *) 0x40013800u)
 #define USART2 ((struct usart *) 0x40004400u)
 #define USART3 ((struct usart *) 0x40004800u)
 #define LPUART1 ((struct usart *) 0x40008000u) // low power UART, asyn only, deep sleep
 
- // CPU frequency, 4 Mhz
+#define I2C1   ((struct i2c *) 0x40005400u)
+// stm32l432kc does not have I2C2, I2C3 is for low power, having clock to wakeup from deep sleep. 
+#define I2C3   ((struct i2c *) 0x40005C00u)
+
+static inline void gpio_set_pullup(uint16_t pin) {
+  struct gpio *gpio = GPIO(PINBANK(pin));
+  int n = PINNO(pin);
+  gpio->PUPDR &= ~(3U << (n * 2));      // clear
+  gpio->PUPDR |=  (1U << (n * 2));      // 01 pullup, 00 no PU or PD, 10 ulldown, 11 resserved
+}
+
+static inline void gpio_set_speed(uint16_t pin) {
+  struct gpio *gpio = GPIO(PINBANK(pin));
+  int n = PINNO(pin);
+  gpio->OSPEEDR &= ~(3U << (n * 2));    // clear
+  gpio->OSPEEDR |=  (3U << (n * 2));    // 11 = (very) high, 10 is high, 01 medium, 00 slow
+}
+
+static inline void gpio_set_open_drain(uint16_t pin) {
+  struct gpio *g = GPIO(PINBANK(pin));
+  int n = PINNO(pin);
+  g->OTYPER |= BIT(n);              // 1 = open-drain
+}
+
+static inline void i2c_gpio_init(uint16_t scl, uint16_t sda, uint8_t af) {
+  gpio_set_mode(scl, GPIO_MODE_AF);
+  gpio_set_af(scl, af);
+  gpio_set_open_drain(scl);
+  //gpio_set_pullup(scl);            //uses external pull-ups
+  gpio_set_speed(scl);
+
+  gpio_set_mode(sda, GPIO_MODE_AF);
+  gpio_set_af(sda, af);
+  gpio_set_open_drain(sda);
+  //gpio_set_pullup(sda);            //external pull-ups
+  gpio_set_speed(sda);
+}
+
+static inline void rcc_i2c_select_hsi(struct i2c *i2c) {
+  // HSI ison as a peripheral clock
+  RCC->CR |= BIT(8);  // bit 8 HSION 
+
+  if (i2c == I2C1) {
+    RCC->CCIPR = (RCC->CCIPR & ~(3U << 12)) | (2U << 12); // target, clear, and set bits 12 and 13 to set 10 to target HSI as lcock
+  } else if (i2c == I2C3) {
+    RCC->CCIPR = (RCC->CCIPR & ~(3U << 16)) | (2U << 16); 
+  }
+}
+
+
+static inline void i2c_init(struct i2c *i2c){
+  uint af = 0; 
+  uint16_t scl = 0, sda =0; 
+
+  if (i2c == I2C1) RCC -> APB1ENR1 |= BIT(21); 
+  if (i2c == I2C3) RCC -> APB1ENR1 |= BIT(23); 
+
+  if (i2c == I2C1) af = 4, sda = PIN('B', 7), scl = PIN('B', 6); 
+  if (i2c == I2C3) af = 4, sda = PIN('B', 4), scl = PIN('A', 7); 
+
+  i2c_gpio_init(scl, sda, af); 
+  rcc_i2c_select_hsi(i2c);
+  i2c->CR1 &= ~BIT(0); 
+  i2c->TIMINGR = 0x00503D58; // taken from CubemX, TIMINGR determines speed, not source
+  i2c -> CR1 |= BIT(0); // peripheral disabled, PE = 0
+}
+
+
 static inline void uart_init(struct usart *usart, unsigned long baud) {
   // 
   uint8_t af = 0;           // Alternate function
