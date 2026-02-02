@@ -262,6 +262,73 @@ static inline int i2c_write(struct i2c *i2c, uint8_t addr7, const uint8_t *buf, 
   return I2C_OK;
 }
 
+static inline int i2c_read(struct i2c *i2c, uint8_t addr7, uint8_t *buf, size_t len ){
+  // checks if BUS is busy and clear flags
+  if (i2c->ISR & BIT(15)) return I2C_ERR_BUSY;
+  i2c->ICR = BIT(5) | BIT(4) | BIT(8) | BIT(9); // writing 1 to these clears error flags 
+
+  while (len > 0) {
+    uint32_t chunk = (len > 255) ? 255 : (uint32_t)len;
+    uint32_t last  = (len <= 255);
+    //2. set CR2 (SADD, RD_WRN=1, NBYTES, START, AUTOEND/RELOAD
+    
+    uint32_t cr2 = 0;
+    cr2 |= ((uint32_t)(addr7 << 1));   // set SADD
+    cr2 |= (chunk << 16);                   // NBYTES = chunk
+    cr2 |= BIT(10);               // set RD_WRN
+    if (!last) cr2 |= BIT(24);         
+    if (last)  cr2 |= BIT(25);         // auto STOP after last byte
+    cr2 |= BIT(13); // set START
+    i2c->CR2 = cr2;
+    for (uint32_t i = 0; i < chunk; i++) {
+      uint32_t timeout = 1000000; 
+      while (((i2c->ISR & BIT(2)) == 0)) { // BIT(1) is TXIS, change from  to TXIS to BIT(2) RXNE
+        uint32_t isr = i2c->ISR;
+        if (isr & BIT(4)) {
+          i2c->ICR = BIT(4);
+          i2c->CR2 |= BIT(14);
+          return I2C_ERR_NACK;
+        }
+        if (isr & BIT(8)) {
+          i2c->ICR = BIT(8);
+          i2c->CR2 |= BIT(14);
+          return I2C_ERR_BUS;
+        }
+        if (isr & BIT(9)) {
+          i2c->ICR = BIT(9); 
+          return I2C_ERR_ARLO;
+        }
+        if (timeout-- == 0) {
+          i2c->CR2 |= BIT(14); // bit(14) cr2_STOP
+          return I2C_ERR_TIMEOUT;
+        }
+      }
+    // read next byte
+    *buf++ = (uint8_t)i2c->RXDR;
+    }
+    if (!last) {
+      // Wait for transfer complete reload
+      int rc = i2c_wait_flag_set(&i2c->ISR, BIT(7), 1000000);
+      if (rc != I2C_OK) {
+        i2c->CR2 |= BIT(14);
+        return rc;
+      }
+    } 
+    else {  
+      // Wait for STOPF (AUTOEND generates STOP automatically)
+      int rc = i2c_wait_flag_set(&i2c->ISR, BIT(5), 1000000);
+      if (rc != I2C_OK) {
+        i2c->CR2 |= BIT(14);
+        return rc;
+      }
+      // Clear STOPF
+      i2c->ICR = BIT(5);
+    }
+    len -= chunk;
+  }
+  return I2C_OK;
+}
+
 
 static inline void i2c_init(struct i2c *i2c){
   uint af = 0; 
