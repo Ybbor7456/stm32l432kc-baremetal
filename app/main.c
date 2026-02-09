@@ -1,5 +1,5 @@
 #include "drivers/hal.h"
-#include "drivers/board.h"
+#include "bsp/board.h"
 #include "drivers/stm32l4_regs.h"
 #include "drivers/util.h"
 
