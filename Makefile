@@ -1,9 +1,22 @@
+CC := arm-none-eabi-gcc
+OBJCOPY := arm-none-eabi-objcopy
+
+BUILD := build
+TARGET := firmware
+
 CFLAGS  ?=  -W -Wall -Wextra -Werror -Wundef -Wshadow -Wdouble-promotion \
             -Wformat-truncation -fno-common -Wconversion \
             -g3 -Os -ffunction-sections -fdata-sections -I. \
             -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 $(EXTRA_CFLAGS)
-LDFLAGS ?= -Tlink.ld -nostartfiles -nostdlib --specs nano.specs -lc -lgcc -Wl,--gc-sections -Wl,-Map=$@.map
-SOURCES = main.c 
+
+
+LDFLAGS ?= -Tplatform/link.ld -nostartfiles -nostdlib --specs nano.specs -lc -lgcc \
+           -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).elf.map
+
+SOURCES := app/main.c platform/startup.c platform/syscalls.c \
+           $(wildcard bsp/*.c) $(wildcard drivers/*.c)
+
+OBJS := $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
 
 ifeq ($(OS),Windows_NT)
   RM = cmd /C del /Q /F
@@ -11,16 +24,24 @@ else
   RM = rm -f
 endif
 
-build: firmware.bin
+build: $(BUILD)/$(TARGET).bin
 
-firmware.elf: $(SOURCES)
-	arm-none-eabi-gcc $(SOURCES) $(CFLAGS) $(LDFLAGS) -o $@
+$(BUILD)/$(TARGET).elf: $(OBJS)
+	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@
 
-firmware.bin: firmware.elf
-	arm-none-eabi-objcopy -O binary $< $@
+$(BUILD)/$(TARGET).bin: $(BUILD)/$(TARGET).elf
+	$(OBJCOPY) -O binary $< $@
 
-flash: firmware.bin
-	st-flash --reset write $< 0x8000000
+$(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+flash: $(BUILD)/$(TARGET).bin
+	st-flash --reset write $< 0x08000000
+
+.PHONY: build flash clean
+
 
 clean:
-	$(RM) firmware.*
+	rm -rf build
+
