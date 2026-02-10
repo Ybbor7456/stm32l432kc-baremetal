@@ -64,4 +64,21 @@ datasheets, reference manuals, user manuals, general notes
 ## Pinmap ##
 [Pin Map](docs/pinmap.md#uart-pins)
 
+## Clocks and buses note
+The BUS connects the CPU to the memory and peripherals. Peripherals are mapped to different buses for speed/power/clocking reasons. Each bus has its own clock domain, and RCC can turn on/off clocks to peripherals on that bus.
+GPIO is on AHB2 → enable via RCC->AHB2ENR (Advanced High-performance Bus, domain 2) 
+USART1 is on APB2 -> enable via RCC->APB2ENR  (Advanced Peripheral Bus 2)
+USART2 is on APB1 -> enable via RCC->APB1ENR1 (Advanced Peripheral Bus 1)
+LPUART (Low-Power UART on STML4 model) is on APB1, enabled via RCC -> APB1ENR2. 
+APB1ENR1 vs. ABP1ENR2. STM32L4 splits APB1 into two enable-register banks to maximize performance. 
+Other buses - AHB3, DMA1, DMA2, CCM. 
+Clock gating is when the MCU turns off the clock signal to a peripheral block (GPIO, USART, I2C, timers, etc.) until explicitly enabled.
+### example
+#### Enabling clock to GPIO ports. 
+#define BIT(x) (1UL << (x))
+#define PINBANK(pin) ((pin) >> 8)
+RCC->AHB2ENR |= BIT(PINBANK(pin));
+#### Enabling clock to peripherals (USART2) 
+RCC->APB1ENR1 |= BIT(17);
+
 
