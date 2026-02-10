@@ -7,20 +7,17 @@ comes with advantages to in shipable products.
 1. Absolute hardware control - directly manage every hardware register, clock source, and sleep state without an operating system layer interfering
 2. Lack of overhead - Removing an OS/RTOS allows for a smaller memory footprint. If there is limited memory remaining in a product, it might be best to take a bare-metal approach. 
 3. Precise timing - In devices where precision timing matters and milliseconds (even microseconds) can be saved, bare-metal programming is an excellent approach. 
-
 ## Disadvantages ##
 1. Complexity - As projects grow the complexity of bare-metal becomes increasingly difficult. 
 2. Dev Time - Though bare-metal may save time in runtime and startup, the time it takes to program is a longer process. 
 3. Portability - Periperals and clocks change from MCU to MCU, making writen bare-metal code impossible to transfer to various projects. The Arm-Cortex does have standardized systicks and 
 the first few entries of the NVIC (nested vector interrupt table), but overall each MCU is programmed differently. 
-
 ## Features ##
 - GPIO
 - RCC
 - UART
 - I^2C
 - SysTick ms timebase
-
 ## Quickstart ##
 ### Toolchain Prerequisites ###
 - ARM GCC Toolchain
@@ -32,16 +29,13 @@ the first few entries of the NVIC (nested vector interrupt table), but overall e
 - firmware.elf
 - firmware.bin
 - firmware.elf.map
-- 
 ### Flash ###
 -Make Flash
-
 ### Serial Monitor ###
 Finding the serial device/port
 - ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
 Opening with baud
 - screen /dev/ttyACM0 115200
-
 ## Project Layout ## 
 #### app
 main.c
@@ -66,11 +60,8 @@ syscalls.c
 startup.c
 #### references 
 datasheets, reference manuals, user manuals, general notes
-
 #### Makefile
-
-
 ## Pinmap ##
-[UART pins](docs/pinmap.md#uart-pins)
+[Pin Map](docs/pinmap.md#uart-pins)
 
 
