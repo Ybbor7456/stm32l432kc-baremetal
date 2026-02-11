@@ -80,5 +80,17 @@ Clock gating is when the MCU turns off the clock signal to a peripheral block (G
 RCC->AHB2ENR |= BIT(PINBANK(pin));
 #### Enabling clock to peripherals (USART2) 
 RCC->APB1ENR1 |= BIT(17);
+## GPIO Modes
+GPIO pin modes are configured via the GPIO port mode register GPIOx_MODER (one per port: GPIOA, GPIOB, GPIOC, …).
+Some STM32L4 devices provide ports beyond A–C, but the STM32L432KC exposes only a subset (commonly A–C depending on package/board).
+GPIOx_MODER is 32 bits: 16 pins per port * 2 bits per pin.
+Mode encoding:
+- 00 Input
+- 01 General-purpose output
+- 10 Alternate function (peripheral-controlled; AF selection is in `GPIOx_AFR[0/1]`)
+- 11 Analog
+
+
+
 
 
