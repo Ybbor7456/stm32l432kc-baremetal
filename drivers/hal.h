@@ -169,8 +169,31 @@ static inline void exti_route(uint16_t pin) { // handles the SYSCFG mapping
   *exticr = (*exticr & ~(0xFu << shift)) | ((port & 0xFu) << shift); // clear then set
 }
 
+static inline void exti_enable_falling(int line){
+  EXTI->IMR1 |= BIT(line);     // interrupt line 0 = masked, 1 = not masked/enable interrupts
+  EXTI->RTSR1 &= ~BIT(line);  // disable rising
+  EXTI->FTSR1 |= BIT(line);   // line 1 = FT enabled, Trigger an intterupt when going high to low
+  EXTI->PR1 = BIT(line);   // 1: Selected trigger request occurred
+}
+
+static inline void exti_enable_rising(int line){
+  EXTI->IMR1 |= BIT(line); 
+  EXTI->RTSR1 |= BIT(line); 
+  EXTI->FTSR1 &= ~BIT(line); 
+  EXTI->PR1 = BIT(line); 
+}
+
+static inline void exti_enable_both(int line){
+  EXTI->IMR1 |= BIT(line); 
+  EXTI->RTSR1 |= BIT(line); 
+  EXTI->FTSR1 |= BIT(line); 
+  EXTI->PR1 = BIT(line); 
+}
+
 static inline void exti_init(uint16_t pin){
+  uint32_t line = PINNO(pin);
   exti_route(pin); 
+  exti_enable_falling(line); 
 }
 
 static inline int i2c_write(struct i2c *i2c, uint8_t addr7, const uint8_t *buf, size_t len) {
