@@ -18,6 +18,7 @@ the first few entries of the NVIC (nested vector interrupt table), but overall e
 - UART
 - I^2C
 - SysTick ms timebase
+- EXTI
 ## Quickstart ##
 ### Toolchain Prerequisites ###
 - ARM GCC Toolchain
