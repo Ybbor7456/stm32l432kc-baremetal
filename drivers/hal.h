@@ -158,6 +158,21 @@ static inline int i2c_wait_flag_set(volatile uint32_t *reg, uint32_t mask, uint3
   return I2C_OK;
 }
 
+static inline void exti_route(uint16_t pin) { // handles the SYSCFG mapping
+  uint32_t line  = PINNO(pin);       // 0..15
+  uint32_t port  = PINBANK(pin);     // A=0,B=1,C=2...
+  uint32_t idx   = line >> 2;        // 0..3 (EXTICR1..4)
+  uint32_t shift = (line & 3u) * 4u; // 0,4,8,12
+
+  RCC->APB2ENR |= BIT(0);            // SYSCFG clock enable
+  volatile uint32_t *exticr = &SYSCFG->EXTICR1 + idx;
+  *exticr = (*exticr & ~(0xFu << shift)) | ((port & 0xFu) << shift); // clear then set
+}
+
+static inline void exti_init(uint16_t pin){
+  exti_route(pin); 
+}
+
 static inline int i2c_write(struct i2c *i2c, uint8_t addr7, const uint8_t *buf, size_t len) {
   // checks if BUS is busy
   if (i2c->ISR & BIT(15)) return I2C_ERR_BUSY;
