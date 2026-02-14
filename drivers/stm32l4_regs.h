@@ -82,3 +82,43 @@ struct i2c { volatile uint32_t CR1, CR2, OAR1, OAR2, TIMINGR, TIMEOUTR, ISR, ICR
 */
 #define I2C1 ((struct i2c *) 0x40005400u)
 #define I2C3 ((struct i2c *) 0x40005C00u)
+
+struct exti{ volatile uint32_t IMR1, EMR1, RTSR1, FTSR1, SWIER1, PR1, IMR2, EMR2, RTSR2, FTSR2, SWIER2, PR2;}; 
+#define EXTI ((struct exti *)0x40010400u)
+
+/*
+IMR1 - Interupt Mask 1
+EMR1 - Event Mask 1
+RTSR1 - Rising Trigger Selection Register 1
+FTSR1 - Falling Trigger Selection Register 1
+SWIER1 - Software Interrupt Event Register
+PR1 - Pending Registers
+*/
+
+struct syscfg{volatile uint32_t MEMRMP,CFGR1,EXTICR1, EXTICR2, EXTICR3, EXTICR4, SCSR,CFGR2, SWPR, SKR;}; 
+#define SYSCFG ((struct syscfg *)0x40010000u)
+
+/*
+memory remap
+config register
+external interrupt config register
+control and status reg
+write portection reg
+sram2 key register
+*/
+
+
+//These are raw memory-mapped register addresses for the ARM Cortex-M4 NVIC
+//ISER = Interrupt Set-Enable Register
+// ICER = interrupt clear enable register 
+//ISER0/ICER0 covers IRQ 0..31
+//ISER1/ICER1 covers IRQ 32..63
+
+#define NVIC_ISER0 (*(volatile uint32_t *)0xE000E100u)
+#define NVIC_ISER1 (*(volatile uint32_t *)0xE000E104u)
+#define NVIC_ICER0 (*(volatile uint32_t *)0xE000E180u)
+#define NVIC_ICER1 (*(volatile uint32_t *)0xE000E184u)
+#define NVIC_IPR   ((volatile uint8_t  *)0xE000E400u)   // priority bytes
+
+//This is not a register. It’s just a number telling you which IRQ line in the NVIC corresponds to the “EXTI lines 5..9”
+#define IRQ_EXTI9_5 23u

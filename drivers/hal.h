@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <math.h> 
 
+
 #include "drivers/util.h"
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
@@ -17,6 +18,7 @@ static inline void systick_init(uint32_t ticks) { // stm32l4 runs at 4MHz
   SYSTICK->VAL = 0;
   SYSTICK->CTRL = BIT(0) | BIT(1) | BIT(2);  // Enable systick
   RCC->APB2ENR |= BIT(0);                   // Enable SYSCFG, bit 0 for smt32l4
+  
 }
 
 // Enum values are per datasheet: 0, 1, 2, 3
@@ -117,6 +119,91 @@ static inline void gpio_set_open_drain(uint16_t pin) {
   g->OTYPER |= BIT(n);              // 1 = open-drain
 }
 
+static inline bool gpio_read_pin(uint16_t pin) {
+  struct gpio *gpio = GPIO(PINBANK(pin));
+  return (gpio->IDR & BIT(PINNO(pin))) != 0;
+}
+
+static inline void button_gpio_init(uint16_t pin){
+  gpio_set_mode(pin, GPIO_MODE_INPUT);
+  gpio_set_pullup(pin);            
+}
+
+static inline void exti_route(uint16_t pin) { // handles the SYSCFG mapping
+  uint32_t line  = PINNO(pin);       // 0..15
+  uint32_t port  = PINBANK(pin);     // A=0,B=1,C=2...
+  uint32_t idx   = line >> 2;        // 0..3 (EXTICR1..4)
+  uint32_t shift = (line & 3u) * 4u; // 0,4,8,12
+
+  RCC->APB2ENR |= BIT(0);            // SYSCFG clock enable
+  volatile uint32_t *exticr = &SYSCFG->EXTICR1 + idx;
+  *exticr = (*exticr & ~(0xFu << shift)) | ((port & 0xFu) << shift); // clear then set
+}
+
+static inline void exti_enable_falling(int line){
+  EXTI->IMR1 |= BIT(line);     // interrupt line 0 = masked, 1 = not masked/enable interrupts
+  EXTI->RTSR1 &= ~BIT(line);  // disable rising
+  EXTI->FTSR1 |= BIT(line);   // line 1 = FT enabled, Trigger an intterupt when going high to low
+  EXTI->PR1 = BIT(line);   // 1: Selected trigger request occurred
+}
+
+static inline void exti_enable_rising(int line){
+  EXTI->IMR1 |= BIT(line); 
+  EXTI->RTSR1 |= BIT(line); 
+  EXTI->FTSR1 &= ~BIT(line); 
+  EXTI->PR1 = BIT(line); 
+}
+
+static inline void exti_enable_both(int line){
+  EXTI->IMR1 |= BIT(line); 
+  EXTI->RTSR1 |= BIT(line); 
+  EXTI->FTSR1 |= BIT(line); 
+  EXTI->PR1 = BIT(line); 
+}
+
+static inline void exti_init(uint16_t pin){
+  uint32_t line = PINNO(pin);
+  exti_route(pin); 
+  exti_enable_falling(line); 
+}
+
+static inline void button_exti_init(uint16_t pin){
+  button_gpio_init(pin);          // Step 2: pin input + pull
+  exti_init(pin);                 // Step 3+4: triggers + route
+  enable_interrupts_exti9_5();    // Step 5: NVIC
+  irq_global_enable();            // Step 5b: global enable (if needed)
+}
+
+
+static inline void nvic_enable_irq(unsigned irqn) {
+  if (irqn < 32) NVIC_ISER0 = (1u << irqn);
+  else NVIC_ISER1 = (1u << (irqn - 32));
+}
+
+static inline void nvic_set_priority(unsigned irqn, uint8_t prio) {
+  NVIC_IPR[irqn] = prio;   // works; exact effective bits depend on implementation
+}
+
+static inline void enable_interrupts_exti9_5(void){
+  nvic_set_priority(IRQ_EXTI9_5, 0x80);   // mid priority; 0x00 = highest
+  nvic_enable_irq(IRQ_EXTI9_5);
+  irq_global_enable();                   // optional if already enabled elsewhere
+}
+
+static inline void EXTI9_5_IRQHandler(void) // use this for button hardware
+{
+  // check which line (5..9) fired, e.g. line 7:
+  if (EXTI->PR1 & BIT(7)) {
+    EXTI->PR1 = BIT(7);     // clear pending by writing 1
+    // button logic to add
+  }
+}
+
+static inline void exti_sw_trigger(uint32_t line) {
+  EXTI->SWIER1 |= BIT(line);
+}
+
+
 static inline void i2c_gpio_init(uint16_t scl, uint16_t sda, uint8_t af) {
   gpio_set_mode(scl, GPIO_MODE_AF);
   gpio_set_af(scl, af);
@@ -140,11 +227,6 @@ static inline void rcc_i2c_select_hsi(struct i2c *i2c) {
   } else if (i2c == I2C3) {
     RCC->CCIPR = (RCC->CCIPR & ~(3U << 16)) | (2U << 16); 
   }
-}
-
-static inline bool gpio_read_pin(uint16_t pin) {
-  struct gpio *gpio = GPIO(PINBANK(pin));
-  return (gpio->IDR & BIT(PINNO(pin))) != 0;
 }
 
 static inline bool i2c_bus_idle(uint16_t scl, uint16_t sda) {
@@ -591,5 +673,6 @@ static inline void i2c_init(struct i2c *i2c){
 12. Error handling
 13. device specific drivers 
 */
+
 
 
