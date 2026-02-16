@@ -15,17 +15,21 @@ __attribute__((naked, noreturn)) void _reset(void) {
   for (;;) (void)0;
 }
 
-// --------- Default handler ----------
-__attribute__((noreturn)) void Default_Handler(void) {
-  for (;;) (void)0;
-}
 
 // --------- Symbols / handlers ----------
 extern void _estack(void);          // from link.ld
 
 // Provide weak defaults so unimplemented IRQs don't crash into address 0
-void SysTick_Handler(void)   __attribute__((weak, alias("Default_Handler")));
+// --------- Default handler ----------
+void Default_Handler(void) {
+  for (;;) (void)0;
+}
+
+void SysTick_Handler(void)    __attribute__((weak, alias("Default_Handler")));
 void EXTI9_5_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
+
+
+
 
 // If you later add USART2, etc, you can add more weak aliases here.
 
