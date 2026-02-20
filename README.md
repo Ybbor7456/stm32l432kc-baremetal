@@ -91,6 +91,10 @@ Mode encoding:
 - 10 Alternate function (peripheral-controlled; AF selection is in `GPIOx_AFR[0/1]`)
 - 11 Analog
 
+## EXTI 
+Still needs a debounce
+NVIC - 
+ISR -
 
 
 
