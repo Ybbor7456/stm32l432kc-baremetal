@@ -176,10 +176,19 @@ static inline void exti_init(uint16_t pin){
 static inline void nvic_set_priority(unsigned irqn, uint8_t prio) {
   NVIC_IPR[irqn] = prio;   // works; exact effective bits depend on implementation
 }
-
+//enables a specific peripheral interrupt in
 static inline void nvic_enable_irq(unsigned irqn) {
   if (irqn < 32) NVIC_ISER0 = (1u << irqn);
   else NVIC_ISER1 = (1u << (irqn - 32));
+}
+
+// globally enable IRQ interrupts
+static inline void irq_global_enable(void){ 
+  __asm volatile ("cpsie i");
+}
+// globally disbale interrupts
+static inline void irq_global_disable(void) {
+  __asm volatile ("cpsid i");
 }
 
 static inline void enable_interrupts_exti9_5(void){
@@ -194,15 +203,6 @@ static inline void button_exti_init(uint16_t pin){
   enable_interrupts_exti9_5();    // NVIC
   //irq_global_enable();            
 }
-
-static inline void irq_global_enable(void){ 
-  __asm volatile ("cpsie i");
-}
-
-static inline void irq_global_disable(void) {
-  __asm volatile ("cpsid i");
-}
-
 
 void EXTI9_5_IRQHandler(void);
 
@@ -627,22 +627,7 @@ static inline void i2c_init(struct i2c *i2c){
 }
 
 
-/* 
-0. macros, structs
-1 enable peripheral clocks, instead of BIT(#), use BIT(RCC_APB1ENR1_I2C1EN_Pos) for readability 
-2. configure mode, AF, output type and output speed
-3. fully reset i2c through CR
-4. set peripheral clock frequency (CR)
-5. set SCL frequency CCR, divide T_high or T_low by T_PCLK1 to get CCR. T-high/low = PCLK * CCR
-6. set max rise time for CL, TRISE register
-7. enable/disable I2C
-8. BUS sanity checks (check IDR of GPIO ports assigned to I2C and checking status flags BUSY and RXNE)
-9. primitive transactions, i2c_start_write(addr7, nbytes), i2c_start_read(addr7, nbytes), i2c_write_bytes(...)i2c_read_bytes(...) ,i2c_stop()
-10. OR rely on AUTOEND instead of i2c_stop() , which stop i2c after designated byte numbers sent/read are finished
-11. register write and reads
-12. Error handling
-13. device specific drivers 
-*/
+
 
 
 
