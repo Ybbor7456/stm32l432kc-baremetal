@@ -8,7 +8,6 @@
 #include <math.h> 
 #include <stdint.h>
 
-
 #include "drivers/util.h"
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
@@ -34,16 +33,28 @@ enum { // debug values
   I2C_OK = 0, I2C_ERR_BUSY = -1, I2C_ERR_NACK = -2, I2C_ERR_BUS = -3, I2C_ERR_ARLO = -4, I2C_ERR_TIMEOUT = -5
 };
 
+enum{ // 00, 01, 10, 11 for pullup/pull-down
+  NO_PULL, UP, DOWN, RESERVED
+}; 
+
+
+static inline void gpio_enable(uint16_t pin) { // enable GPIO clock port
+  RCC->AHB2ENR |= BIT(PINBANK(pin));
+  (void)RCC->AHB2ENR; // optional readback to ensure the write completes
+}
+
 static inline void gpio_set_mode(uint16_t pin, uint8_t mode) {
   struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
+  gpio_enable(pin);
   int n = PINNO(pin);                      // Pin number
-  RCC->AHB2ENR |= BIT(PINBANK(pin));
+ 
   gpio->MODER &= ~(3U << (n * 2));         // Clear existing setting
   gpio->MODER |= (mode & 3) << (n * 2);    // Set new mode
 }
 
 static inline void gpio_set_af(uint16_t pin, uint8_t af_num) {
   struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
+  gpio_enable(pin);
   int n = PINNO(pin);                      // Pin number
   gpio->AFR[n >> 3] &= ~(15UL << ((n & 7) * 4)); // clears
   gpio->AFR[n >> 3] |= ((uint32_t) af_num) << ((n & 7) * 4); // sets 
@@ -105,15 +116,25 @@ static inline bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
   return true;                                   // Expired, return true
 }
 
-static inline void gpio_set_pullup(uint16_t pin) {
+static inline void gpio_set_pullup(uint16_t pin,) {
   struct gpio *gpio = GPIO(PINBANK(pin));
   int n = PINNO(pin);
+  gpio_enable(pin);
   gpio->PUPDR &= ~(3U << (n * 2));      // clear
   gpio->PUPDR |=  (1U << (n * 2));      // 01 pullup, 00 no PU or PD, 10 ulldown, 11 resserved
 }
 
+static inline void gpio_set_pupd(uint16_t pin, uint8_t conf) {
+  struct gpio *gpio = GPIO(PINBANK(pin));
+  int n = PINNO(pin);
+  gpio_enable(pin);
+  gpio->PUPDR &= ~(3U << (n * 2));      // clear
+  gpio->PUPDR |=  (conf & 3U << (n * 2));      // 01 pullup, 00 no PU or PD, 10 ulldown, 11 resserved
+}
+
 static inline void gpio_set_speed(uint16_t pin) {
   struct gpio *gpio = GPIO(PINBANK(pin));
+  gpio_enable(pin);
   int n = PINNO(pin);
   gpio->OSPEEDR &= ~(3U << (n * 2));    // clear
   gpio->OSPEEDR |=  (3U << (n * 2));    // 11 = (very) high, 10 is high, 01 medium, 00 slow
@@ -121,6 +142,7 @@ static inline void gpio_set_speed(uint16_t pin) {
 
 static inline void gpio_set_open_drain(uint16_t pin) {
   struct gpio *g = GPIO(PINBANK(pin));
+  gpio_enable(pin);
   int n = PINNO(pin);
   g->OTYPER |= BIT(n);              // 1 = open-drain
 }
@@ -132,7 +154,7 @@ static inline bool gpio_read_pin(uint16_t pin) {
 
 static inline void button_gpio_init(uint16_t pin){
   gpio_set_mode(pin, GPIO_MODE_INPUT);
-  gpio_set_pullup(pin);            
+  gpio_set_pullup(pin, NO_PULL);            
 }
 
 static inline void exti_route(uint16_t pin) { // handles the SYSCFG mapping
@@ -204,13 +226,36 @@ static inline void button_exti_init(uint16_t pin){
   //irq_global_enable();            
 }
 
-void EXTI9_5_IRQHandler(void);
+<<<<<<< HEAD
+=======
+static inline void irq_global_enable(void){ 
+  __asm volatile ("cpsie i");
+}
 
+static inline void irq_global_disable(void) {
+  __asm volatile ("cpsid i");
+}
+
+static inline void adc_gpio_init(uint16_t pin, uint16_t conf){ 
+  gpio_enable(pin); 
+  gpio_set_mode(pin, GPIO_MODE_ANALOG); 
+  gpio_set_pupd(pin, conf)
+}
+
+static inline void dma_clock_enable(void){
+  RCC->AHB1ENR |= BIT(0); // sets 1 to bit 0
+}
+
+static inline void set_dma_configs(){
+
+}
+
+>>>>>>> 8baa8d4 (began ADC+DMA configs and clock enable, reworked pull-up function to accept binary values 0-3, slight changes to main)
+void EXTI9_5_IRQHandler(void);
 
 static inline void exti_sw_trigger(uint32_t line) {
   EXTI->SWIER1 |= BIT(line);
 }
-
 
 static inline void i2c_gpio_init(uint16_t scl, uint16_t sda, uint8_t af) {
   gpio_set_mode(scl, GPIO_MODE_AF);
@@ -627,7 +672,10 @@ static inline void i2c_init(struct i2c *i2c){
 }
 
 
+<<<<<<< HEAD
 
 
 
 
+=======
+>>>>>>> 8baa8d4 (began ADC+DMA configs and clock enable, reworked pull-up function to accept binary values 0-3, slight changes to main)
