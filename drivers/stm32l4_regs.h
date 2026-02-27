@@ -122,3 +122,38 @@ sram2 key register
 
 //This is not a register. It’s just a number telling you which IRQ line in the NVIC corresponds to the “EXTI lines 5..9”
 #define IRQ_EXTI9_5 23u
+
+struct dma1{volatile uint32_t ISR, IFCR, CCRx, CNDTRx, CPARx, CMARx, CSELR;};
+#define DMA1 ((struct dma1 *)0x40020000u)
+/*
+Interrupt Status Reg - A read-only register that contains the global interrupt flags for all channels. 
+Interrupt Flag Clear - A write-only register used to clear the flags in the ISR
+DMA Channel X Config - The main control register for a specific DMA channel, enables/disables channel, 
+------- transfer direction, circular/normal mode, set the data size. 
+DMA x Number of data to transfer register - A counter that holds the total number of data items to be transferred
+channel x peripheral address - A counter that holds the total number of data items to be transferred
+channel x memory address - Holds the base address of the memory buffer (SRAM) where the data will be read from or written to
+DMA channel selection register - Maps a specific peripheral hardware request to a DMA channel. On the STM32L4, this register allows you to choose
+-------- which peripheral (like ADC1, SPI1, or UART2) triggers the DMA transfer for each channel
+*/
+
+struct adc{volatile uint32_t ISR, IER, CR, CFGR, CFGR2, SMPR1, SMPR2, TR1, TR2, TR3, SQR1, SQR2, SQR3, SQR4, DR, JSQR, OFRy, JDRy, AWD2CR, AWD3CR, DIFSEL, CALFACT;};
+#define ADC1 ((struct adc *) 0x50040000u)
+
+/*
+Interrupt Status Register - used to monitor the ADC state and clear pending interrupts
+Interrupt Enable Register - Determines which events from the ISR are allowed to trigger a hardware interrupt to the CPU.
+Control Register - Used to enable/disable the ADC, start regular or injected conversions, and initiate the self-calibration process.
+Configuration Register 1 - Configures settings like resolution (8/10/12-bit), data alignment, triggers (software vs. hardware), and DMA management.
+Configuration Register 2 - Primarily handles the Hardware Oversampler, allowing the ADC to sum and shift multiple samples for higher resolution
+(SMPR1) Sample Time Register - Define the sampling time for each individual channel.
+(TRx) Watchdog Threshold Register - Sets the high and low voltage boundaries for analog watchdogs
+(SQRx) Regular Sequence Register - Define the order and number of channels to be converted in a "Regular" group. 
+(DR) Regular Data Register - The single "mailbox" where the result of the most recent regular conversion is stored.
+(JSQR) Injected Sequence Register - Defines the sequence, length, and trigger for "Injected" channels (channels that can interrupt a regular sequence).
+(JDRy) Injected Data Register - four dedicated registers for injected results, ensuring data isn't overwritten before the CPU can read it.
+(OFRy) Offset Register - Used to store an offset value that the hardware automatically subtracts from the conversion result
+Differential Selection Register - Configures each ADC channel as either Single-Ended or Differential
+Callibration Factor Register -  Stores the calibration values calculated during the self-calibration procedure.
+(AWDnCR) Analog and Watchdog Configuration Registers - Used to select which specific channels are monitored by the second and third analog watchdogs.
+*/

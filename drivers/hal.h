@@ -37,6 +37,10 @@ enum{ // 00, 01, 10, 11 for pullup/pull-down
   NO_PULL, UP, DOWN, RESERVED
 }; 
 
+enum{
+  sixbit = 3, eightbit = 2, tenbit = 1, twelvebit = 0
+};
+
 
 static inline void gpio_enable(uint16_t pin) { // enable GPIO clock port
   RCC->AHB2ENR |= BIT(PINBANK(pin));
@@ -47,7 +51,6 @@ static inline void gpio_set_mode(uint16_t pin, uint8_t mode) {
   struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
   gpio_enable(pin);
   int n = PINNO(pin);                      // Pin number
- 
   gpio->MODER &= ~(3U << (n * 2));         // Clear existing setting
   gpio->MODER |= (mode & 3) << (n * 2);    // Set new mode
 }
@@ -198,19 +201,10 @@ static inline void exti_init(uint16_t pin){
 static inline void nvic_set_priority(unsigned irqn, uint8_t prio) {
   NVIC_IPR[irqn] = prio;   // works; exact effective bits depend on implementation
 }
-//enables a specific peripheral interrupt in
+
 static inline void nvic_enable_irq(unsigned irqn) {
   if (irqn < 32) NVIC_ISER0 = (1u << irqn);
   else NVIC_ISER1 = (1u << (irqn - 32));
-}
-
-// globally enable IRQ interrupts
-static inline void irq_global_enable(void){ 
-  __asm volatile ("cpsie i");
-}
-// globally disbale interrupts
-static inline void irq_global_disable(void) {
-  __asm volatile ("cpsid i");
 }
 
 static inline void enable_interrupts_exti9_5(void){
@@ -226,8 +220,6 @@ static inline void button_exti_init(uint16_t pin){
   //irq_global_enable();            
 }
 
-<<<<<<< HEAD
-=======
 static inline void irq_global_enable(void){ 
   __asm volatile ("cpsie i");
 }
@@ -242,15 +234,54 @@ static inline void adc_gpio_init(uint16_t pin, uint16_t conf){
   gpio_set_pupd(pin, conf)
 }
 
-static inline void dma_clock_enable(void){
+static inline void dma_adc_clock_enable(void){
   RCC->AHB1ENR |= BIT(0); // sets 1 to bit 0
+  RCC->AHB2ENR |= BIT(13);  
 }
 
-static inline void set_dma_configs(){
-
+static inline void adc_stable_calibration_state(){
+  // if a conversion is running, end it
+  if (ADC1->CR & BIT(2)) {              
+    ADC1->CR |= BIT(4);
+    while (adc->CR & BIT(4)) (void)0;  // waiting to avoid race conditons 
+    while (adc->CR & BIT(2)) (void)0;
+  }
+  // if ADC is enabled, disable it
+  if (ADC1->CR & BIT(0)) {              
+    ADC1->CR |= BIT(1);
+    while (adc->CR & BIT(0)) (void)0;
+  }
+  // callibrate 
+  ADC1->CR |= BIT(31);
+  while (adc->CR & BIT(31)) (void)0;
 }
 
->>>>>>> 8baa8d4 (began ADC+DMA configs and clock enable, reworked pull-up function to accept binary values 0-3, slight changes to main)
+static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode){
+  // can only set res when adstart and jadstart are 0
+  if (ADC1->CR & BIT(2)) {              
+    ADC1->CR |= BIT(4);
+    while (ADC1->CR & BIT(4)) (void)0;     // wait ADSTP clears
+    while (ADC1->CR & BIT(2)) (void)0;     // wait ADSTART clears
+  } // stops the conv. 
+  ADC1->CFGR &= ~(3U << 3U); 
+  ADC1->CFGR |= ((res_bit & 3) << 3U); 
+  if(left_align) ADC1->CFGR |= BIT(5); //align left
+  else ADC1->CFGR &= ~BIT(5);
+  if(conv_mode) ADC1->CFGR |= BIT(13);
+  else ADC1->CFGR &= ~BIT(13); 
+  ADC1->CFGR |= BIT(0); // setting DMA enable only (for now)
+  ADC1->CFGR &= ~BIT(1); // set single-shot for now
+}
+
+static inline void adc_sample_time(uintt8_t sample_rate){
+  //channel enable and cirular mode
+}
+
+
+static inline void set_adc_for_dma_configs(){
+  //dma enable, dma mode, sample time
+}
+
 void EXTI9_5_IRQHandler(void);
 
 static inline void exti_sw_trigger(uint32_t line) {
@@ -672,10 +703,3 @@ static inline void i2c_init(struct i2c *i2c){
 }
 
 
-<<<<<<< HEAD
-
-
-
-
-=======
->>>>>>> 8baa8d4 (began ADC+DMA configs and clock enable, reworked pull-up function to accept binary values 0-3, slight changes to main)
