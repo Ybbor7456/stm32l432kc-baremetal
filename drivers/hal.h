@@ -256,7 +256,7 @@ static inline void adc_stable_calibration_state(){
   while (adc->CR & BIT(31)) (void)0;
 }
 
-static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode){
+static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode, uint8_t pin){
   // can only set res when adstart and jadstart are 0
   if (ADC1->CR & BIT(2)) {              
     ADC1->CR |= BIT(4);
@@ -271,15 +271,33 @@ static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_m
   else ADC1->CFGR &= ~BIT(13); 
   ADC1->CFGR |= BIT(0); // setting DMA enable only (for now)
   ADC1->CFGR &= ~BIT(1); // set single-shot for now
+  gpio_set_pupd(pin, NO_PULL); 
 }
 
-static inline void adc_sample_time(uintt8_t sample_rate){
-  //channel enable and cirular mode
+static inline void adc_set_sequence(uint8_t len, uint8_t ch, uint8_t sample_rate){
+   if (ADC1->CR & BIT(2)) {              
+    ADC1->CR |= BIT(4);
+    while (ADC1->CR & BIT(4)) (void)0;     // wait ADSTP clears
+    while (ADC1->CR & BIT(2)) (void)0;     // wait ADSTART clears
+  } // stops the conv. 
+  // clear and set conv bits
+  ADC1->SQR1 = (ADC1->SQR1 & ~((0xFU << 0) | (0x1FU << 6)))
+  | ((len & 0xFU) << 0)   // L[3:0]
+  | ((ch & 0x1FU) << 6); // SQ1[4:0]
+  // set sample time
+  ADC1->SMPR1 = (ADC1->SMPR1 & ~(0x7U << 24)) | ((sample_rate & 0x7U)<<24); 
 }
 
+static inline void set_dma_configs(uint8_t channel, uint8_t request_id){
+  //enable clock, pick channel, clear interrupt flag, CSELR mapping: route ADC request → your DMA channel
+  dma_adc_clock_enable(); 
+  // selecting DMA channel. 
+  uint8_t n = channel - 1; 
+  DMA1->CSELR = (DMA1->CSELR & ~(0xFU << n*4U)) | ((request_id & 0xFU) << n*4U);
 
-static inline void set_adc_for_dma_configs(){
-  //dma enable, dma mode, sample time
+  DMA1->CCRx &= ~BIT(0); // clear dma channel
+  DMA1->IFCR &= ~BIT(0); // clear global interrupt flag clear
+  DMA1->IFCR |= BIT(0); // set global interrupt flag clear
 }
 
 void EXTI9_5_IRQHandler(void);
