@@ -295,9 +295,7 @@ static inline void set_dma_configs(uint8_t channel, uint8_t request_id){
   uint8_t n = channel - 1; 
   DMA1->CSELR = (DMA1->CSELR & ~(0xFU << n*4U)) | ((request_id & 0xFU) << n*4U);
 
-  DMA1->CCRx &= ~BIT(0); // clear dma channel
-  DMA1->IFCR &= ~BIT(0); // clear global interrupt flag clear
-  DMA1->IFCR |= BIT(0); // set global interrupt flag clear
+  DMA1->IFCR = (0xFU << n*4U); // clears GIF, TCIF, HTIF, TEIF
 }
 
 void EXTI9_5_IRQHandler(void);
