@@ -220,21 +220,13 @@ static inline void button_exti_init(uint16_t pin){
   //irq_global_enable();            
 }
 
-static inline void irq_global_enable(void){ 
-  __asm volatile ("cpsie i");
-}
-
-static inline void irq_global_disable(void) {
-  __asm volatile ("cpsid i");
-}
-
 static inline void adc_gpio_init(uint16_t pin, uint16_t conf){ 
   gpio_enable(pin); 
   gpio_set_mode(pin, GPIO_MODE_ANALOG); 
-  gpio_set_pupd(pin, conf)
+  gpio_set_pupd(pin, conf);
 }
 
-static inline void dma_adc_clock_enable(void){
+static inline void dma_adc_clock_enable(){
   RCC->AHB1ENR |= BIT(0); // sets 1 to bit 0
   RCC->AHB2ENR |= BIT(13);  
 }
@@ -243,20 +235,20 @@ static inline void adc_stable_calibration_state(){
   // if a conversion is running, end it
   if (ADC1->CR & BIT(2)) {              
     ADC1->CR |= BIT(4);
-    while (adc->CR & BIT(4)) (void)0;  // waiting to avoid race conditons 
-    while (adc->CR & BIT(2)) (void)0;
+    while (ADC1->CR & BIT(4)) (void)0;  // waiting to avoid race conditons 
+    while (ADC1->CR & BIT(2)) (void)0;
   }
   // if ADC is enabled, disable it
   if (ADC1->CR & BIT(0)) {              
     ADC1->CR |= BIT(1);
-    while (adc->CR & BIT(0)) (void)0;
+    while (ADC1->CR & BIT(0)) (void)0;
   }
   // callibrate 
   ADC1->CR |= BIT(31);
-  while (adc->CR & BIT(31)) (void)0;
+  while (ADC1->CR & BIT(31)) (void)0;
 }
 
-static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode, uint8_t pin){
+static inline void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode, uint16_t pin){
   // can only set res when adstart and jadstart are 0
   if (ADC1->CR & BIT(2)) {              
     ADC1->CR |= BIT(4);
@@ -288,14 +280,30 @@ static inline void adc_set_sequence(uint8_t len, uint8_t ch, uint8_t sample_rate
   ADC1->SMPR1 = (ADC1->SMPR1 & ~(0x7U << 24)) | ((sample_rate & 0x7U)<<24); 
 }
 
-static inline void set_dma_configs(uint8_t channel, uint8_t request_id){
-  //enable clock, pick channel, clear interrupt flag, CSELR mapping: route ADC request → your DMA channel
-  dma_adc_clock_enable(); 
-  // selecting DMA channel. 
-  uint8_t n = channel - 1; 
-  DMA1->CSELR = (DMA1->CSELR & ~(0xFU << n*4U)) | ((request_id & 0xFU) << n*4U);
+static inline void dma1_ch1_disable(void) {
+  DMA1_CH1->CCR &= ~BIT(0);           // EN = 0
+}
 
-  DMA1->IFCR = (0xFU << n*4U); // clears GIF, TCIF, HTIF, TEIF
+static inline void dma1_ch1_enable(void) {
+  DMA1_CH1->CCR |= BIT(0);            // EN = 1
+}
+
+static inline void dma_ch1_setup(uint8_t request_id, volatile uint16_t *dst) {
+  dma_adc_clock_enable();
+  dma1_ch1_disable();                // EN=0 before touching config
+  DMA1->IFCR = 0xFU << 0;            // clear CH1: bits 0..3
+  DMA1->CSELR = (DMA1->CSELR & ~(0xFU << 0)) | ((request_id & 0xFU) << 0);
+
+  // set dma peripheral address, memory address, number of data items to transfer
+  DMA1_CH1->CPAR  = &ADC1->DR;
+  DMA1_CH1->CMAR  = dst;
+  DMA1_CH1->CNDTR = 1U;
+  uint32_t ccr = DMA1_CH1->CCR;
+  ccr &= ~(BIT(4) | BIT(5) | BIT(6) | BIT(7) | (3U << 8) | (3U << 10));
+
+  ccr |= (1U << 8);
+  ccr |= (1U << 10);
+  DMA1_CH1->CCR = ccr;
 }
 
 void EXTI9_5_IRQHandler(void);
