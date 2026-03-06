@@ -28,7 +28,17 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
 int main(void) {
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
   uint16_t btn = PIN('B', 7);
-  uint16_t adc = PIN('A', 1);     // adc PA1 ADC1_6
+  uint16_t adc = PIN('A', 3);     // adc PA1 ADC1_6
+  const uint8_t af_num = 2; 
+  const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
+  static volatile uint16_t adc_sample;
+  uint8_t smp = 5; // 92.5,.... set enum for it later to change/reference it easier 
+  uint8_t resolution = 0; // 12-bit
+  uint8_t align_left = 1; // 0 if right
+  uint8_t single = 0; // single conversion 
+
+
+
   // upper byte stores 01 = B, and lower stores 03 for LED
   //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
   uart_init(USART2, 115200);
@@ -41,6 +51,14 @@ int main(void) {
   gpio_set_mode(led, GPIO_MODE_OUTPUT);  // Set blue LED to output mode
   gpio_set_mode(btn, GPIO_MODE_INPUT); 
   gpio_set_pullup(btn); 
+  
+  adc_gpio_init(adc, NO_PULL); 
+  dma_ch1_setup(request_ID, &adc_sample); 
+  adc_stable_calibration_state(); 
+  adc_set_configs(resolution,align_left, single, adc);
+  adc_set_sample(0, 8, smp); 
+  dma1_ch1_enable(); 
+
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
     for (;;) {
      // remove so button toggles LED only
@@ -51,15 +69,16 @@ int main(void) {
         on = !on;             // Toggle LED state
         printf("LED: %d, tick: %lu\r\n", on, s_ticks);
       } */
-     
+      /*
       static bool led_on = false;
       if (g_btn_event) {
       g_btn_event = 0;
       led_on = !led_on;
       gpio_write(led, led_on);
       printf("Button! LED=%d tick=%lu\r\n", led_on, s_ticks);
-    } 
+    } */ 
     // Here we could perform other activities!
+
   }
   return 0; 
 }

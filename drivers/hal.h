@@ -110,16 +110,9 @@ static inline uint8_t uart_read_byte(struct usart *usart) {
   return (uint8_t) (usart->RDR & 255); // DR is now RDR
 }
 
-// t: expiration time, prd: period, now: current time. Return true if expired
-static inline bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
-  if (now + prd < *t) *t = 0;                    // Time wrapped? Reset timer
-  if (*t == 0) *t = now + prd;                   // First poll? Set expiration
-  if (*t > now) return false;                    // Not expired yet, return
-  *t = (now - *t) > prd ? now + prd : *t + prd;  // Next expiration time
-  return true;                                   // Expired, return true
-}
 
-static inline void gpio_set_pullup(uint16_t pin,) {
+
+static inline void gpio_set_pullup(uint16_t pin) {
   struct gpio *gpio = GPIO(PINBANK(pin));
   int n = PINNO(pin);
   gpio_enable(pin);
@@ -158,6 +151,15 @@ static inline bool gpio_read_pin(uint16_t pin) {
 static inline void button_gpio_init(uint16_t pin){
   gpio_set_mode(pin, GPIO_MODE_INPUT);
   gpio_set_pullup(pin, NO_PULL);            
+}
+
+// t: expiration time, prd: period, now: current time. Return true if expired
+static inline bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
+  if (now + prd < *t) *t = 0;                    // Time wrapped? Reset timer
+  if (*t == 0) *t = now + prd;                   // First poll? Set expiration
+  if (*t > now) return false;                    // Not expired yet, return
+  *t = (now - *t) > prd ? now + prd : *t + prd;  // Next expiration time
+  return true;                                   // Expired, return true
 }
 
 static inline void exti_route(uint16_t pin) { // handles the SYSCFG mapping
@@ -220,9 +222,24 @@ static inline void button_exti_init(uint16_t pin){
   //irq_global_enable();            
 }
 
+<<<<<<< HEAD
 static inline void adc_gpio_init(uint16_t pin, uint16_t conf){ 
   gpio_enable(pin); 
   gpio_set_mode(pin, GPIO_MODE_ANALOG); 
+=======
+static inline void irq_global_enable(void){ 
+  __asm volatile ("cpsie i");
+}
+
+static inline void irq_global_disable(void) {
+  __asm volatile ("cpsid i");
+}
+
+static inline void adc_gpio_init(uint16_t pin, uint16_t conf /*, uint8_t af_num */){ 
+  gpio_enable(pin); 
+  gpio_set_mode(pin, GPIO_MODE_ANALOG); 
+  // gpio_set_af(pin, af_num); 
+>>>>>>> 26bc3de (enable DMA and ADC channel in main, poll DMA TC flag)
   gpio_set_pupd(pin, conf);
 }
 
@@ -282,6 +299,7 @@ static inline void adc_set_sequence(uint8_t len, uint8_t ch, uint8_t sample_rate
 
 static inline void dma1_ch1_disable(void) {
   DMA1_CH1->CCR &= ~BIT(0);           // EN = 0
+<<<<<<< HEAD
 }
 
 static inline void dma1_ch1_enable(void) {
@@ -304,7 +322,46 @@ static inline void dma_ch1_setup(uint8_t request_id, volatile uint16_t *dst) {
   ccr |= (1U << 8);
   ccr |= (1U << 10);
   DMA1_CH1->CCR = ccr;
+=======
+>>>>>>> 26bc3de (enable DMA and ADC channel in main, poll DMA TC flag)
 }
+
+static inline void dma1_ch1_enable(void) {
+  DMA1_CH1->CCR |= BIT(0);            // EN = 1
+}
+
+static inline void start_adc(){
+  ADC1->ISR |= BIT(0); // clear upon startup 
+  ADC1->CR |= BIT(0);
+  while (!(ADC1->ISR & BIT(0))) (void)0;
+  ADC1->CR |= BIT(2);
+}
+
+static inline void dma_ch1_setup(uint8_t request_id, volatile uint16_t *dst) {
+  dma_adc_clock_enable();
+  dma1_ch1_disable();                // EN=0 before touching config
+  DMA1->IFCR = 0xFU << 0;            // clear CH1: bits 0..3
+  DMA1->CSELR = (DMA1->CSELR & ~(0xFU << 0)) | ((request_id & 0xFU) << 0);
+
+  // set dma peripheral address, memory address, number of data items to transfer
+  DMA1_CH1->CPAR  = &ADC1->DR;
+  DMA1_CH1->CMAR  = dst;
+  DMA1_CH1->CNDTR = 1U;
+  uint32_t ccr = DMA1_CH1->CCR;
+  ccr &= ~(BIT(4) | BIT(5) | BIT(6) | BIT(7) | (3U << 8) | (3U << 10));
+
+  ccr |= (1U << 8);
+  ccr |= (1U << 10);
+  DMA1_CH1->CCR = ccr;
+}
+
+/*Set ADC side of things
+1. Set ADC PA3 to analog with no pull
+2. Single-ended DIFSEL
+3. Sample time for channel 8 
+4. Regular Sequence
+5.CFGR DMAEN bits
+*/
 
 void EXTI9_5_IRQHandler(void);
 
