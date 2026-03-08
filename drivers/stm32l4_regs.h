@@ -137,8 +137,19 @@ DMA channel selection register - Maps a specific peripheral hardware request to 
 -------- which peripheral (like ADC1, SPI1, or UART2) triggers the DMA transfer for each channel
 */
 
-struct adc{volatile uint32_t ISR, IER, CR, CFGR, CFGR2, SMPR1, SMPR2, TR1, TR2, TR3, SQR1, SQR2, SQR3, SQR4, DR, JSQR, OFRy, JDRy, AWD2CR, AWD3CR, DIFSEL, CALFACT;};
+struct dma_ch {
+  volatile uint32_t CCR;
+  volatile uint32_t CNDTR;
+  volatile uint32_t CPAR;
+  volatile uint32_t CMAR;
+};
+
+#define DMA1_CH1 ((struct dma_ch *) 0x40020008u)
+
+// OFFSETS!!!! CHECK THESE EVERY TIME ADD RESERVED SPACES OMG
+struct adc{volatile uint32_t ISR, IER, CR, CFGR, CFGR2, SMPR1, SMPR2, reserve1 ,TR1, TR2, TR3, reserve2, SQR1, SQR2, SQR3, SQR4, DR, JSQR, OFRy, JDRy, AWD2CR, AWD3CR, DIFSEL, CALFACT;};
 #define ADC1 ((struct adc *) 0x50040000u)
+
 
 /*
 Interrupt Status Register - used to monitor the ADC state and clear pending interrupts
