@@ -143,13 +143,11 @@ struct dma_ch {
   volatile uint32_t CPAR;
   volatile uint32_t CMAR;
 };
-
 #define DMA1_CH1 ((struct dma_ch *) 0x40020008u)
 
 // OFFSETS!!!! CHECK THESE EVERY TIME ADD RESERVED SPACES OMG
 struct adc{volatile uint32_t ISR, IER, CR, CFGR, CFGR2, SMPR1, SMPR2, reserve1 ,TR1, TR2, TR3, reserve2, SQR1, SQR2, SQR3, SQR4, DR, JSQR, OFRy, JDRy, AWD2CR, AWD3CR, DIFSEL, CALFACT;};
 #define ADC1 ((struct adc *) 0x50040000u)
-
 
 /*
 Interrupt Status Register - used to monitor the ADC state and clear pending interrupts
@@ -167,4 +165,21 @@ Configuration Register 2 - Primarily handles the Hardware Oversampler, allowing 
 Differential Selection Register - Configures each ADC channel as either Single-Ended or Differential
 Callibration Factor Register -  Stores the calibration values calculated during the self-calibration procedure.
 (AWDnCR) Analog and Watchdog Configuration Registers - Used to select which specific channels are monitored by the second and third analog watchdogs.
+*/
+
+
+// no reserved spots in register mapping for SPI 
+struct spi{
+  volatile uint32_t CR1, CR2, SR, DR, CRCPR, RXCRCR, TXCRCR;
+}; 
+#define SPI1 ((struct spi *) 0x40013000u)
+
+/*
+CR1 - used for configurations, defines Controller-Target (master-slave), baud rate, clock polarity and clock phase, SPI enable/disable
+CR2 - handles advanced features, sets data size, and DMA/interrupt requests. 
+SR - Provides the current state of the peripheral, flags such as TXE, RXNE, BSY for communication 
+DR - Writing to this register puts data into the TX FIFO; reading from it retrieves data from the RX FIFO.
+CRCPR - Holds the polynomial used for hardware CRC calculation.
+RXCRCR - Contains the computed CRC value for all received data since the last reset.
+TXCRCR - Contains the computed CRC value for all transmitted data.
 */
