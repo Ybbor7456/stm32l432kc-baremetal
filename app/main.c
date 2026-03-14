@@ -3,6 +3,12 @@
 #include "drivers/stm32l4_regs.h"
 #include "drivers/util.h"
 #include "drivers/logger.h"
+#include "drivers/gpio.h"
+#include "drivers/interrupt.h"
+#include "drivers/i2c.h"
+#include "drivers/adc_dma.h"
+#include "drivers/uart.h"
+#include "drivers/spi.h"
 
 
 static volatile uint32_t s_ticks; // volatile is important!!
@@ -23,12 +29,26 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
     g_btn_event = 1; 
   }
 }
+
+
+static inline void delay_ms(uint32_t ms) {
+  uint32_t start = hal_millis();
+  while ((hal_millis() - start) < ms) {
+  }
+}
+
 //  GPIOB port 3 has onboard LED 
 
 int main(void) {
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
   uint16_t btn = PIN('B', 7);
   uint16_t adc = PIN('A', 1);     // adc PA1 ADC1_6
+
+  uint16_t spi_sck = PIN('A', 5);
+  uint16_t miso = PIN('A',6 );
+  uint16_t mosi = PIN('A',7 ); 
+  uint16_t ssel = PIN('B',0 ); 
+
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
   static volatile uint16_t adc_sample;
@@ -62,14 +82,15 @@ int main(void) {
   
  
   adc_set_sequence(0, 6, smp); 
- 
   dma1_ch1_enable(); 
-
   start_adc(); 
+
+  spi1_gpio_init(spi_sck, miso, mosi, ssel);
+  spi1_master_config(); 
   //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
   
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
-  uint32_t t = 0; 
+  //uint32_t t = 0; 
     for (;;) {
     
      // remove so button toggles LED only
@@ -89,15 +110,15 @@ int main(void) {
       printf("Button! LED=%d tick=%lu\r\n", led_on, s_ticks);
     } */ 
       //printf("condition not met \n");
-      
+      /*
       if (timer_expired(&t, 1000, s_ticks)) {          // every 100 ms
         //printf("Step A: \r\n");
         dma1_ch1_disable();
         DMA1->IFCR = 0xFU << 0;                        // clear CH1 flags
         DMA1_CH1->CNDTR = 1U;                          // reload count
         dma1_ch1_enable();
-        /*printf("CR=%08lX ISR=%08lX SQR1=%08lX SMPR1=%08lX CFGR=%08lX DR=%lu\r\n",
-        ADC1->CR, ADC1->ISR, ADC1->SQR1, ADC1->SMPR1, ADC1->CFGR, (unsigned long)ADC1->DR); */
+        //printf("CR=%08lX ISR=%08lX SQR1=%08lX SMPR1=%08lX CFGR=%08lX DR=%lu\r\n",
+        //ADC1->CR, ADC1->ISR, ADC1->SQR1, ADC1->SMPR1, ADC1->CFGR, (unsigned long)ADC1->DR); 
         // Start ADC conversion (ADC must already be enabled + ready)
         ADC1->CR |= BIT(2);      // ADSTART
         //printf("ADSTART \r\n"); 
@@ -107,7 +128,15 @@ int main(void) {
        // printf("ADC1 CR:  0x%08lX\r\n", ADC1->CR);
        // printf("ADC1 ISR:  0x%08lX\r\n", ADC1->ISR);
         printf("ADC Sample: %u\r\n", (unsigned)adc_sample);
-    } 
+    } */
+    shiftreg_write(0x00, ssel);    // 0000
+    delay_ms(750); 
+    shiftreg_write(0xFF, ssel);    // 1111
+    delay_ms(750); 
+    shiftreg_write(0x05, ssel);    // 0101
+    delay_ms(750); 
+    shiftreg_write(0x0A, ssel);   // 1010
+    delay_ms(750); 
   }
   return 0;
 }
