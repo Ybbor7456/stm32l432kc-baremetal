@@ -19,6 +19,7 @@
 #include "interrupt.h"
 // #include "exti.h" combined with itnerrupt.h
 #include "adc_dma.h"
+#include "spi.h"
 
 uint32_t hal_millis(void);
 static volatile uint32_t s_ticks;
@@ -47,5 +48,12 @@ static inline bool timer_expired(uint32_t *t, uint32_t prd, uint32_t now) {
   return true;                                   // Expired, return true
 }
 
+static inline void delay_ms(uint32_t ms) {
+  uint32_t start = hal_millis();
+  while ((hal_millis() - start) < ms) {
+  }
+}
+
 
 void EXTI9_5_IRQHandler(void);
+

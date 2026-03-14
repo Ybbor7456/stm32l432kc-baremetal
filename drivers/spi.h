@@ -115,3 +115,5 @@ static inline void shiftreg_write(uint8_t value, uint16_t latch_pin) {
     spi1_wait_idle();          // wait until SPI fully finishes
     shiftreg_latch_pulse(latch_pin);   // move shifted bits to outputs
 }
+
+// next do a device that has CS, miso, 

@@ -9,6 +9,7 @@
 #include "drivers/adc_dma.h"
 #include "drivers/uart.h"
 #include "drivers/spi.h"
+#include "fnxs.h"
 
 
 static volatile uint32_t s_ticks; // volatile is important!!
@@ -19,6 +20,8 @@ void SysTick_Handler(void) {
 uint32_t hal_millis(void) {
   return s_ticks;
 }
+
+
 volatile uint8_t g_btn_event = 0;
 void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static inlie
 {
@@ -31,11 +34,6 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
 }
 
 
-static inline void delay_ms(uint32_t ms) {
-  uint32_t start = hal_millis();
-  while ((hal_millis() - start) < ms) {
-  }
-}
 
 //  GPIOB port 3 has onboard LED 
 
@@ -90,53 +88,14 @@ int main(void) {
   //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
   
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
-  //uint32_t t = 0; 
+  //uint32_t t = 0; static bool led_on = false;
     for (;;) {
     
      // remove so button toggles LED only
-     /*
-      if (timer_expired(&timer, period, s_ticks)) {
-        static bool on;       // This block is executed
-        gpio_write(led, on);  // Every `period` milliseconds
-        on = !on;             // Toggle LED state
-        printf("LED: %d, tick: %lu\r\n", on, s_ticks);
-      } */
-      /*
-      static bool led_on = false;
-      if (g_btn_event) {
-      g_btn_event = 0;
-      led_on = !led_on;
-      gpio_write(led, led_on);
-      printf("Button! LED=%d tick=%lu\r\n", led_on, s_ticks);
-    } */ 
-      //printf("condition not met \n");
-      /*
-      if (timer_expired(&t, 1000, s_ticks)) {          // every 100 ms
-        //printf("Step A: \r\n");
-        dma1_ch1_disable();
-        DMA1->IFCR = 0xFU << 0;                        // clear CH1 flags
-        DMA1_CH1->CNDTR = 1U;                          // reload count
-        dma1_ch1_enable();
-        //printf("CR=%08lX ISR=%08lX SQR1=%08lX SMPR1=%08lX CFGR=%08lX DR=%lu\r\n",
-        //ADC1->CR, ADC1->ISR, ADC1->SQR1, ADC1->SMPR1, ADC1->CFGR, (unsigned long)ADC1->DR); 
-        // Start ADC conversion (ADC must already be enabled + ready)
-        ADC1->CR |= BIT(2);      // ADSTART
-        //printf("ADSTART \r\n"); 
-        // Wait for DMA transfer complete
-        while (!(DMA1->ISR & BIT(1))) (void)0;
-        DMA1->IFCR = BIT(1);                    // clear TCIF1
-       // printf("ADC1 CR:  0x%08lX\r\n", ADC1->CR);
-       // printf("ADC1 ISR:  0x%08lX\r\n", ADC1->ISR);
-        printf("ADC Sample: %u\r\n", (unsigned)adc_sample);
-    } */
-    shiftreg_write(0x00, ssel);    // 0000
-    delay_ms(750); 
-    shiftreg_write(0xFF, ssel);    // 1111
-    delay_ms(750); 
-    shiftreg_write(0x05, ssel);    // 0101
-    delay_ms(750); 
-    shiftreg_write(0x0A, ssel);   // 1010
-    delay_ms(750); 
-  }
+     // uart_led(&timer, period, s_ticks, led);
+      //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
+      //adc_read(&t, s_ticks, &adc_sample);
+      reg_lights(ssel); 
+    }
   return 0;
 }
