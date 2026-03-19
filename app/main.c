@@ -13,16 +13,12 @@
 
 
 static volatile uint32_t s_ticks; // volatile is important!!
-void SysTick_Handler(void) {
+/* void SysTick_Handler(void) {
   s_ticks++;
-}
+} */
 
-uint32_t hal_millis(void) {
-  return s_ticks;
-}
-
-
-volatile uint8_t g_btn_event = 0;
+volatile uint8_t g_btn_event = 0; // for interrupts 
+/**/
 void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static inlie
 {
   // check which line (5..9) fired, e.g. line 7:
@@ -32,8 +28,6 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
     g_btn_event = 1; 
   }
 }
-
-
 
 //  GPIOB port 3 has onboard LED 
 
@@ -45,7 +39,7 @@ int main(void) {
   uint16_t spi_sck = PIN('A', 5);
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
-  uint16_t ssel = PIN('B',0 ); 
+  uint16_t cs = PIN('B',0 ); 
 
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
@@ -60,13 +54,13 @@ int main(void) {
   //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
   uart_init(USART2, 115200);
   for (volatile int i = 0; i < 100000; i++) (void)0;
- // printf("UART alive\r\n"); 
+  // printf("UART alive\r\n"); 
   systick_init(USART2_FCK / 1000);         // Tick every 1 ms
   exti_init(btn);
   nvic_set_priority(IRQ_EXTI9_5, 0x80); 
   nvic_enable_irq(IRQ_EXTI9_5);
   irq_global_enable(); 
- // printf("UART alive2\r\n"); 
+  // printf("UART alive2\r\n"); 
   //EXTI->SWIER1 |= BIT(7); // test 
   gpio_set_mode(led, GPIO_MODE_OUTPUT);  // Set blue LED to output mode
   gpio_set_mode(btn, GPIO_MODE_INPUT); 
@@ -83,19 +77,17 @@ int main(void) {
   dma1_ch1_enable(); 
   start_adc(); 
 
-  spi1_gpio_init(spi_sck, miso, mosi, ssel);
+  spi1_gpio_init(spi_sck, miso, mosi, cs);
   spi1_master_config(); 
   //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
   
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
     for (;;) {
-    
-     // remove so button toggles LED only
-     // uart_led(&timer, period, s_ticks, led);
+      // uart_led(&timer, period, s_ticks, led);
       //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
       //adc_read(&t, s_ticks, &adc_sample);
-      reg_lights(ssel); 
+      reg_lights(cs); // blocking (delay(250ms))
     }
   return 0;
 }
