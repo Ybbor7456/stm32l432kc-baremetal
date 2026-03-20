@@ -145,31 +145,28 @@ static inline void spi_cs_high(uint16_t pin){
     gpio_write(pin, true; )
 }
 
-/*
-pull CS low
-send a command byte
-send a dummy byte
-capture the returned data byte
-wait until SPI is idle
-pull CS high
-return the data byte
-*/
-
 // move to adxl.c
 static inline uint8_t adxl345_read_reg(uint16_t cs_pin, uint8_t reg){
     //ADXL345 -> 10111001, 0x9A4819, needs 1 byte to read, bit 7: read bit 6: multi byte bit 0-5: reg address
+    // full duplex: send a receive bytes at the same time
     uint8_t cmd = ADXL345_SPI_READ | reg; 
+    uint8_t dummy_byte = 0x00; // dummy byte to push clock pulses
+    uint8_t trash, data; 
     gpio_write(cs_pin, false); // drive low
-    // send cmd over SPI
-        // check/wait status TX reg
-        // move cmd to DR
-        // wait for RX to finish
-        // dummy/blank data to clear flag
-        // pull CS high
 
-    while ((SPI1->SR & BIT(1)) == 0) {} // wait for TX
-    // send cmd to DR
-    gpio_write(cs_pin, true); 
+    while ((SPI1->SR & BIT(1)) == 0) {} // wait for TX in 
+    *(volatile uint8_t *)&SPI1->DR = cmd; // send cmd to DR *8-bit
+    while(((SPI1->SR & BIT(0)) == 0)){} // wait for RX = 1
+    trash = *(volatile uint8_t *)&SPI1->DR; // clears RX flag
+
+    while((SPI1->SR & BIT(1)) == 0){}
+    *(volatile uint8_t *)&SPI1->DR = dummy_byte; 
+    while((SPI1->SR & BIT(0)) == 0){}
+    data = *(volatile uint8_t *)&SPI1->DR; // fill register value
+
+    while (SPI1->SR & BIT(7)); // bsy flag
+    gpio_write(cs_pin, true); // pull CS high
+    return data;// retrun 
 }
 
 static inline void adxl345_write_reg(uint16_t cs_pin, uint8_t reg, uint8_t value){
