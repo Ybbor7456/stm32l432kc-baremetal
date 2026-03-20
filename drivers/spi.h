@@ -25,6 +25,7 @@
 
 //SPI Protocol Bits
 #define ADXL345_SPI_READ 0x80
+#define ADXL345_SPI_WRITE 0x00
 #define ADXL345_SPI_MB 0x40
 
 /*
@@ -170,9 +171,26 @@ static inline uint8_t adxl345_read_reg(uint16_t cs_pin, uint8_t reg){
 }
 
 static inline void adxl345_write_reg(uint16_t cs_pin, uint8_t reg, uint8_t value){
+    uint8_t cmd = ADXL345_SPI_WRITE | reg; 
+    uint8_t trash; 
+    gpio_write(cs_pin, false); 
+    while((SPI1->SR & BIT(1))== 0){}
+    *(volatile uint8_t *)&SPI1->DR = cmd; 
+    while((SPI1->SR & BIT(0))== 0){}
+    trash = *(volatile uint8_t *)&SPI1->DR; 
 
+    while((SPI1->SR & BIT(1))== 0){}
+    *(volatile uint8_t *)&SPI1->DR = value; 
+    while((SPI1->SR & BIT(0))== 0){}
+    trash = *(volatile uint8_t *)&SPI1->DR;
+
+    while(SPI1->SR & BIT(7)); 
+    gpio_write(cs_pin, true); 
 }
-
+/*
+SR = what's peripheral doing?
+DR = what byte is sending/receiving?
+*/
 
 /*
 https://patorjk.com/software/taag/#p=display&f=RubiFont&t=Shift+Register+Helpers&x=rainbow3&v=4&h=4&w=80&we=false
