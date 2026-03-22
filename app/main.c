@@ -17,7 +17,7 @@ static volatile uint32_t s_ticks; // volatile is important!!
   s_ticks++;
 } */
 
-volatile uint8_t g_btn_event = 0; // for interrupts 
+volatile uint8_t g_btn_event = 0; // for interrupts S / baud; 
 /**/
 void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static inlie
 {
@@ -49,45 +49,62 @@ int main(void) {
   uint8_t align = 0; // 0 if right
   uint8_t single = 0; // single conversion 
   
-
+  
   // upper byte stores 01 = B, and lower stores 03 for LED
   //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
   uart_init(USART2, 115200);
   for (volatile int i = 0; i < 100000; i++) (void)0;
-  // printf("UART alive\r\n"); 
-  systick_init(USART2_FCK / 1000);         // Tick every 1 ms
+  //printf("UART alive\r\n"); 
+ 
+  systick_init(SYSCLK_HZ  / 1000);         // Tick every 1 ms
+ 
   exti_init(btn);
+  
   nvic_set_priority(IRQ_EXTI9_5, 0x80); 
   nvic_enable_irq(IRQ_EXTI9_5);
   irq_global_enable(); 
+  
   // printf("UART alive2\r\n"); 
   //EXTI->SWIER1 |= BIT(7); // test 
+  
   gpio_set_mode(led, GPIO_MODE_OUTPUT);  // Set blue LED to output mode
   gpio_set_mode(btn, GPIO_MODE_INPUT); 
   gpio_set_pullup(btn); 
- // printf("UART alive3\r\n"); 
+  // printf("UART alive3\r\n"); 
+  
+  
+  
   adc_gpio_init(adc, NO_PULL); 
   
   dma_ch1_setup(request_ID, &adc_sample); 
   adc_stable_calibration_state(); 
   adc_set_configs(resolution, align, single, adc);
   
- 
   adc_set_sequence(0, 6, smp); 
   dma1_ch1_enable(); 
   start_adc(); 
-
-  spi1_gpio_init(spi_sck, miso, mosi, cs);
-  spi1_master_config(); 
-  //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
   
+
+
+  //printf("spi1 before init \r\n");
+  spi1_gpio_init(spi_sck, miso, mosi, cs);
+  //printf("spi1 init finished \r\n");
+  spi1_master_config(); 
+  
+  //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
+   
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
+
+  
     for (;;) {
       // uart_led(&timer, period, s_ticks, led);
       //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
       //adc_read(&t, s_ticks, &adc_sample);
-      reg_lights(cs); // blocking (delay(250ms))
+      //reg_lights(cs); // blocking (delay(250ms)) 
+      uint8_t val = adxl345_read_reg(cs, POWER_CTL); 
+      printf("POWER_CTL Reg: 0x%02X\r\n", (unsigned int)val); 
+      adxl345_write_reg(cs, POWER_CTL, 0x08); 
     }
   return 0;
 }

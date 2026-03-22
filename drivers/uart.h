@@ -7,11 +7,9 @@
 #include <math.h> 
 #include <stdint.h>
 
-
 #include "drivers/util.h"
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
-
 
 static inline void uart_init(struct usart *usart, unsigned long baud) {
   // 
@@ -33,8 +31,8 @@ static inline void uart_init(struct usart *usart, unsigned long baud) {
   gpio_set_mode(rx, GPIO_MODE_AF);
   gpio_set_af(rx, af);
   usart->CR1 = 0;                           // Disable this UART
-  usart->BRR = USART2_FCK / baud;                 // FREQ is a UART bus frequency
-  usart->CR1 |= BIT(0) | BIT(2) | BIT(3);  // Set UE, RE, TE
+  usart->BRR = SYSCLK_HZ / baud;           // FREQ is a UART bus frequency,  USART2_FCK defined in board.h
+  usart->CR1 |= BIT(0) | BIT(2) | BIT(3);   // Set UE, RE, TE
   if (tx == 0 && rx == 0) return; // safeguard 
 }
 

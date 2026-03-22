@@ -22,6 +22,7 @@
 #define DATAY1 0x35
 #define DATAZ0 0x36
 #define DATAZ1 0x37
+#define POWER_CTL 0x2D
 
 //SPI Protocol Bits
 #define ADXL345_SPI_READ 0x80
@@ -29,27 +30,11 @@
 #define ADXL345_SPI_MB 0x40
 
 /*
-0. select SPI device to use, GPIO pins for miso, mosi, ssel, and sck. 74HC595
-- use 74HC595 8bit shift reg first to make it easy by omitting miso, move on to 
-1. bring up clocks
-2. GPIO functionality. 
-3. 
-*/
-
-/*
-use the shift register, latch pin, datapin, clock pin. 
-tie OE to GND so outputs stay enabled
-PA5 → 74HC595 SHCP
-PA7 → 74HC595 SER
-PB0 → 74HC595 STCP
-
-74HC595 OE → GND
-74HC595 MR → 3.3V
-74HC595 VCC → 3.3V
-74HC595 GND → GND
-74HC595 HRCL -> 3.3
-
-Q0–Q7 → resistor → LED → GND
+ADXL345 uses I^2C pin names, it is an I^2C && SPI device. 
+CS = CS (B0)
+SCL = SCK A5
+SDO = MISO A6 
+SDA = MOSI A7
 */
 
 static inline void spi1_gpio_init(uint16_t sck, uint16_t miso, uint16_t mosi, uint16_t cs){
@@ -61,7 +46,7 @@ static inline void spi1_gpio_init(uint16_t sck, uint16_t miso, uint16_t mosi, ui
     */
     // gpio set mode also configures the gpio PIN/BANK clocks
     uint8_t af = 5; 
-    RCC->APB2ENR |= BIT(12); 
+    RCC->APB2ENR |= BIT(12); //clock enable
     gpio_set_mode(sck, GPIO_MODE_AF); 
     gpio_set_af(sck, af); 
     gpio_set_mode(miso, GPIO_MODE_AF); 
@@ -69,22 +54,26 @@ static inline void spi1_gpio_init(uint16_t sck, uint16_t miso, uint16_t mosi, ui
     gpio_set_mode(mosi, GPIO_MODE_AF); 
     gpio_set_af(mosi, af); 
     gpio_set_mode(cs, GPIO_MODE_OUTPUT); 
-    gpio_write(cs, false); 
+    gpio_write(cs, true); 
     //gpio_set_af(ssel, af); 
     // needs pull-up/pulldown 
 }
 
 static inline void spi1_master_config(void){
+    printf("A \r\n");
     SPI1->CR1 |= BIT(2); 
+    printf("B \r\n");
     // set 8-bit
     SPI1->CR2 &= ~(0xFU << 8); // clear CR2 bits 8-11
+    printf("C \r\n");
     SPI1->CR2 |= (7U << 8); // set 8bit (0111)
-
+    
     //Keep RXONLY bit clear when bidirectional mode is active.
     SPI1->CR1 &= ~BIT(10); // set to full-duplex
     SPI1->CR1 |= BIT(8);   // SSI
     SPI1->CR1 |= BIT(9);   // SSM
     SPI1->CR1 &= ~BIT(7); // MSB
+    
     // SPI1->CR1 |= BIT(7); lsb first 
     SPI1->CR1 &= ~(7U << 3); // clear baud 
     SPI1->CR1 |= (4U << 3); // set baud to Fpclk/32
@@ -92,6 +81,7 @@ static inline void spi1_master_config(void){
     SPI1->CR1 |= (BIT(1) | BIT(0)); // cpol cpha = 1
     // SPI1->CR1 |= BIT(0); // cpha = 1
     // SPI1->CR1 |= BIT(1); // cpol = 1
+   
     SPI1->CR2 |= BIT(12); // RXNE 8-bit
     SPI1->CR1 |= BIT(6); // spi enable
 }
@@ -125,17 +115,6 @@ static inline void spi1_wait_idle(void) {
 }
 
 
-/*
-The ADXL345 needs normal SPI transaction framing:
-
-CS low
-
-send command/address bytes
-
-transfer data
-
-CS high
-*/
 
 
 static inline void spi_cs_low(uint16_t pin){
@@ -143,7 +122,7 @@ static inline void spi_cs_low(uint16_t pin){
 }
 
 static inline void spi_cs_high(uint16_t pin){
-    gpio_write(pin, true; )
+    gpio_write(pin, true);
 }
 
 // move to adxl.c
@@ -159,17 +138,19 @@ static inline uint8_t adxl345_read_reg(uint16_t cs_pin, uint8_t reg){
     *(volatile uint8_t *)&SPI1->DR = cmd; // send cmd to DR *8-bit
     while(((SPI1->SR & BIT(0)) == 0)){} // wait for RX = 1
     trash = *(volatile uint8_t *)&SPI1->DR; // clears RX flag
-
+    (void) trash; 
     while((SPI1->SR & BIT(1)) == 0){}
     *(volatile uint8_t *)&SPI1->DR = dummy_byte; 
     while((SPI1->SR & BIT(0)) == 0){}
     data = *(volatile uint8_t *)&SPI1->DR; // fill register value
 
-    while (SPI1->SR & BIT(7)); // bsy flag
+    spi1_wait_idle(); // bsy flag
     gpio_write(cs_pin, true); // pull CS high
     return data;// retrun 
 }
 
+
+//Use write_reg() only on registers that are meant to be configured
 static inline void adxl345_write_reg(uint16_t cs_pin, uint8_t reg, uint8_t value){
     uint8_t cmd = ADXL345_SPI_WRITE | reg; 
     uint8_t trash; 
@@ -178,13 +159,13 @@ static inline void adxl345_write_reg(uint16_t cs_pin, uint8_t reg, uint8_t value
     *(volatile uint8_t *)&SPI1->DR = cmd; 
     while((SPI1->SR & BIT(0))== 0){}
     trash = *(volatile uint8_t *)&SPI1->DR; 
-
+    (void) trash; 
     while((SPI1->SR & BIT(1))== 0){}
     *(volatile uint8_t *)&SPI1->DR = value; 
     while((SPI1->SR & BIT(0))== 0){}
     trash = *(volatile uint8_t *)&SPI1->DR;
 
-    while(SPI1->SR & BIT(7)); 
+    spi1_wait_idle();  
     gpio_write(cs_pin, true); 
 }
 /*
