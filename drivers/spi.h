@@ -28,6 +28,8 @@
 #define ADXL345_SPI_READ 0x80
 #define ADXL345_SPI_WRITE 0x00
 #define ADXL345_SPI_MB 0x40
+#define ADXL345_MEASURE 0x08
+
 
 /*
 ADXL345 uses I^2C pin names, it is an I^2C && SPI device. 
@@ -114,9 +116,6 @@ static inline void spi1_wait_idle(void) {
     }
 }
 
-
-
-
 static inline void spi_cs_low(uint16_t pin){
     gpio_write(pin, false); 
 }
@@ -124,54 +123,6 @@ static inline void spi_cs_low(uint16_t pin){
 static inline void spi_cs_high(uint16_t pin){
     gpio_write(pin, true);
 }
-
-// move to adxl.c
-static inline uint8_t adxl345_read_reg(uint16_t cs_pin, uint8_t reg){
-    //ADXL345 -> 10111001, 0x9A4819, needs 1 byte to read, bit 7: read bit 6: multi byte bit 0-5: reg address
-    // full duplex: send a receive bytes at the same time
-    uint8_t cmd = ADXL345_SPI_READ | reg; 
-    uint8_t dummy_byte = 0x00; // dummy byte to push clock pulses
-    uint8_t trash, data; 
-    gpio_write(cs_pin, false); // drive low
-
-    while ((SPI1->SR & BIT(1)) == 0) {} // wait for TX in 
-    *(volatile uint8_t *)&SPI1->DR = cmd; // send cmd to DR *8-bit
-    while(((SPI1->SR & BIT(0)) == 0)){} // wait for RX = 1
-    trash = *(volatile uint8_t *)&SPI1->DR; // clears RX flag
-    (void) trash; 
-    while((SPI1->SR & BIT(1)) == 0){}
-    *(volatile uint8_t *)&SPI1->DR = dummy_byte; 
-    while((SPI1->SR & BIT(0)) == 0){}
-    data = *(volatile uint8_t *)&SPI1->DR; // fill register value
-
-    spi1_wait_idle(); // bsy flag
-    gpio_write(cs_pin, true); // pull CS high
-    return data;// retrun 
-}
-
-
-//Use write_reg() only on registers that are meant to be configured
-static inline void adxl345_write_reg(uint16_t cs_pin, uint8_t reg, uint8_t value){
-    uint8_t cmd = ADXL345_SPI_WRITE | reg; 
-    uint8_t trash; 
-    gpio_write(cs_pin, false); 
-    while((SPI1->SR & BIT(1))== 0){}
-    *(volatile uint8_t *)&SPI1->DR = cmd; 
-    while((SPI1->SR & BIT(0))== 0){}
-    trash = *(volatile uint8_t *)&SPI1->DR; 
-    (void) trash; 
-    while((SPI1->SR & BIT(1))== 0){}
-    *(volatile uint8_t *)&SPI1->DR = value; 
-    while((SPI1->SR & BIT(0))== 0){}
-    trash = *(volatile uint8_t *)&SPI1->DR;
-
-    spi1_wait_idle();  
-    gpio_write(cs_pin, true); 
-}
-/*
-SR = what's peripheral doing?
-DR = what byte is sending/receiving?
-*/
 
 /*
 https://patorjk.com/software/taag/#p=display&f=RubiFont&t=Shift+Register+Helpers&x=rainbow3&v=4&h=4&w=80&we=false
