@@ -16,13 +16,14 @@
 #define BW_RATE 0x2C
 #define ADXL345_REG_POWER_CTL 0x2D
 #define DATA_FORMAT 0x31
-#define ADXL345_REG_DATAX0 0x32
+#define DATAX0 0x32
 #define DATAX1 0x33
 #define DATAY0 0x34
 #define DATAY1 0x35
 #define DATAZ0 0x36
 #define DATAZ1 0x37
 #define POWER_CTL 0x2D
+
 
 //SPI Protocol Bits
 #define ADXL345_SPI_READ 0x80

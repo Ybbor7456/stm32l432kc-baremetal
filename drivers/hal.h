@@ -57,5 +57,19 @@ static inline void delay_ms(uint32_t ms) {
   }
 }
 
+
+ // crude delay, use for debugging and when tickint disabled
+static inline void delay_cycles(volatile uint32_t count) {
+  while (count--) {
+    (void)0;
+  }
+}
+
+ static inline void crude_delay_ms(uint32_t ms) {
+  while (ms--) {
+    delay_cycles(4000);   // adjust this experimentally
+  }
+}
+
 void EXTI9_5_IRQHandler(void);
 

@@ -10,7 +10,7 @@
 #include "drivers/uart.h"
 #include "drivers/spi.h"
 #include "fnxs.h"
-
+#include "devices/adxl345.h"
 
 static volatile uint32_t s_ticks; // volatile is important!!
 /* void SysTick_Handler(void) {
@@ -40,7 +40,7 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
-
+  int16_t x,y,z;
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
   static volatile uint16_t adc_sample;
@@ -72,8 +72,6 @@ int main(void) {
   gpio_set_pullup(btn); 
   // printf("UART alive3\r\n"); 
   
-  
-  
   adc_gpio_init(adc, NO_PULL); 
   
   dma_ch1_setup(request_ID, &adc_sample); 
@@ -84,27 +82,26 @@ int main(void) {
   dma1_ch1_enable(); 
   start_adc(); 
   
-
-
   //printf("spi1 before init \r\n");
   spi1_gpio_init(spi_sck, miso, mosi, cs);
   //printf("spi1 init finished \r\n");
   spi1_master_config(); 
   
   //printf("&ADC1->SQR1=%p &ADC1->DR=%p\r\n", &ADC1->SQR1, &ADC1->DR);
-   
+  
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
+  adxl345_init(cs); 
 
-  
     for (;;) {
       // uart_led(&timer, period, s_ticks, led);
       //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
       //adc_read(&t, s_ticks, &adc_sample);
       //reg_lights(cs); // blocking (delay(250ms)) 
-      uint8_t val = adxl345_read_reg(cs, POWER_CTL); 
-      printf("POWER_CTL Reg: 0x%02X\r\n", (unsigned int)val); 
-      adxl345_write_reg(cs, POWER_CTL, 0x08); 
+      adxl345_read_xyz(cs, &x, &y, &z);
+      printf("X: %d | Y: %d | Z: %d\r\n", x, y, z);
+      //delay_ms(250); no longer functions due to disabling tickint. use crude delay
+      crude_delay_ms(50);
     }
   return 0;
 }

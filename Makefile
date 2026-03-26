@@ -23,7 +23,7 @@ LDFLAGS ?= -Tplatform/link.ld -nostartfiles -nostdlib --specs nano.specs -lc -lg
            -Wl,--gc-sections -Wl,-Map=$(BUILD)/$(TARGET).elf.map
 
 SOURCES := $(wildcard app/*.c) platform/startup.c platform/syscalls.c \
-           $(wildcard bsp/*.c) $(wildcard drivers/*.c)
+           $(wildcard bsp/*.c) $(wildcard drivers/*.c) $(wildcard devices/*.c)
 
 OBJS := $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
 
