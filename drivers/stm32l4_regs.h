@@ -174,6 +174,11 @@ struct spi{
 }; 
 #define SPI1 ((struct spi *) 0x40013000u)
 
+struct tim{
+  volatile uint32_t CR1, CR2, SMCR, DIER, SR, EGR, CCMR1, CCMR2, CCER, CNT, PSC, ARR, CCR1, CCR2, CCR3, CCR4, CCR, DMAR, OR1, OR2;
+};
+#define TIM2 ((struct tim *) 0x40000000u)
+
 /*
 CR1 - used for configurations, defines Controller-Target (master-slave), baud rate, clock polarity and clock phase, SPI enable/disable
 CR2 - handles advanced features, sets data size, and DMA/interrupt requests. 

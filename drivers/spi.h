@@ -63,12 +63,12 @@ static inline void spi1_gpio_init(uint16_t sck, uint16_t miso, uint16_t mosi, ui
 }
 
 static inline void spi1_master_config(void){
-    printf("A \r\n");
+    //printf("A \r\n");
     SPI1->CR1 |= BIT(2); 
-    printf("B \r\n");
+    //printf("B \r\n");
     // set 8-bit
     SPI1->CR2 &= ~(0xFU << 8); // clear CR2 bits 8-11
-    printf("C \r\n");
+    //printf("C \r\n");
     SPI1->CR2 |= (7U << 8); // set 8bit (0111)
     
     //Keep RXONLY bit clear when bidirectional mode is active.

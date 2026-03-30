@@ -11,6 +11,7 @@
 #include "drivers/spi.h"
 #include "fnxs.h"
 #include "devices/adxl345.h"
+#include "drivers/tim.h"
 
 static volatile uint32_t s_ticks; // volatile is important!!
 /* void SysTick_Handler(void) {
@@ -40,7 +41,7 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
-  int16_t x,y,z;
+  //int16_t x,y,z;
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
   static volatile uint16_t adc_sample;
@@ -92,16 +93,19 @@ int main(void) {
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
   adxl345_init(cs); 
-
+  tim2_init(); 
     for (;;) {
       // uart_led(&timer, period, s_ticks, led);
       //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
       //adc_read(&t, s_ticks, &adc_sample);
       //reg_lights(cs); // blocking (delay(250ms)) 
-      adxl345_read_xyz(cs, &x, &y, &z);
-      printf("X: %d | Y: %d | Z: %d\r\n", x, y, z);
+      //adxl345_read_xyz(cs, &x, &y, &z);
+      //printf("X: %d | Y: %d | Z: %d\r\n", x, y, z);
       //delay_ms(250); no longer functions due to disabling tickint. use crude delay
-      crude_delay_ms(50);
+      printf("SYSCLK-ish check via UART\r\n");
+      printf("PSC=%lu ARR=%lu CNT=%lu\r\n", TIM2->PSC, TIM2->ARR, TIM2->CNT);
+      tim2_delay_ms(500); 
+      printf("tick \r\n");
     }
   return 0;
 }
