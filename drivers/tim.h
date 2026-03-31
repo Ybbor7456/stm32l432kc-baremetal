@@ -66,3 +66,5 @@ static inline uint32_t tim2_get_count(void){
 static inline void tim2_clear_uif(void){
     TIM2->SR &= ~BIT(0);
 }
+
+// add ISR increments to be non-blocking

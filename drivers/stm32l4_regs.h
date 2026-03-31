@@ -174,10 +174,6 @@ struct spi{
 }; 
 #define SPI1 ((struct spi *) 0x40013000u)
 
-struct tim{
-  volatile uint32_t CR1, CR2, SMCR, DIER, SR, EGR, CCMR1, CCMR2, CCER, CNT, PSC, ARR, CCR1, CCR2, CCR3, CCR4, CCR, DMAR, OR1, OR2;
-};
-#define TIM2 ((struct tim *) 0x40000000u)
 
 /*
 CR1 - used for configurations, defines Controller-Target (master-slave), baud rate, clock polarity and clock phase, SPI enable/disable
@@ -188,3 +184,34 @@ CRCPR - Holds the polynomial used for hardware CRC calculation.
 RXCRCR - Contains the computed CRC value for all received data since the last reset.
 TXCRCR - Contains the computed CRC value for all transmitted data.
 */
+
+struct tim{
+  volatile uint32_t CR1, CR2, SMCR, DIER, SR, EGR, CCMR1, CCMR2, CCER, CNT, PSC, ARR, CCR1, CCR2, CCR3, CCR4, CCR, DMAR, OR1, OR2;
+};
+#define TIM2 ((struct tim *) 0x40000000u)
+
+
+struct can_core{
+  volatile uint32_t MCR, MSR, TSR, RF0R, RF1R, IER, ESR, BTR;
+};
+#define CAN_CORE ((struct can_core *) 0x40006400u)
+
+struct can_tx_mailbox{
+  volatile uint32_t TIR, TDTR, TDLR, TDHR;
+};
+#define CAN_TXMBOX ((struct can_tx_mailbox *)(0x40006400u + 0x180))
+
+struct can_rx_mailbox{
+  volatile uint32_t RIR, RDTR, RDLR, RDHR;
+};
+#define CAN_RXMBOX ((struct can_rx_mailbox *)(0x40006400u + 0x1B0))
+
+struct can_filter{
+  volatile uint32_t FMR, FM1R, RESERVED, FS1R, RESERVED, FFA1R, FA1R;
+};
+#define CAN_FILTER ((struct can_filter *)(0x40006400u + 0x200))
+
+struct can_filter_bank{
+  volatile uint32_t FR1, FR2;
+};
+#define CAN1_FILTERBK  ((struct can_filter_bank *)(CAN1_BASE + 0x240u))

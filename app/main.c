@@ -41,6 +41,8 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
+  uint16_t can_rx = PIN('A', 11);
+  uint16_t can_tx = PIN('A', 12); 
   //int16_t x,y,z;
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
