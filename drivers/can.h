@@ -31,10 +31,31 @@ static inline void can_gpio_init(uint16_t can_rx, uint16_t can_tx){
     gpio_set_pupd(can_tx, NO_PULL);  
 }
 
-static inline void can_init_mode(){
-    CAN_CORE->MCR |= BIT(0);
-    while(!(CAN_CORE->MSR & BIT(0))){} // wait for init acknowledgement  
+static inline void can_enter_init_mode(void){
+    CAN_CORE->MCR |= BIT(0); // set      
+    while (!(CAN_CORE->MSR & BIT(0))) {} // wait for init acknowledgement
 }
+
+static inline void can_leave_init_mode(void){
+    CAN_CORE->MCR &= ~BIT(0); // clear
+    while (CAN_CORE->MSR & BIT(0)) {} // wait for INAK to clear
+}
+
+
+static inline void can_btr_config(void){
+    const uint32_t brp = 4;   // 4 + 1 = 5
+    const uint32_t ts1 = 11;  // ts1 = 12 tq
+    const uint32_t ts2 = 1;   // ts2 = 2 tq
+    const uint32_t sjw = 1;   // sjw = 2 tq
+    can_enter_init_mode();
+    CAN_CORE->BTR =
+        ((sjw & 0x3u)  << 24) | // # of time quantum of a bit change during resynchronization to compensate for phase errors
+        ((ts2 & 0x7u)  << 20) | // duration from sample point to end of bit, a time buffer.
+        ((ts1 & 0xFu)  << 16) | // 1100 << 16, duration from start of bit to sample point
+        ((brp & 0x3FFu) << 0);  // baud rate prescaler = 5, divides peripheral clock to set time quantum for CAN
+    can_leave_init_mode();
+}
+
 
 static inline void can_filter_init(){
     CAN_FILTER->FMR |= BIT(0); // initialize mode
