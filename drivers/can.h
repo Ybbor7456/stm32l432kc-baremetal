@@ -56,15 +56,20 @@ static inline void can_btr_config(void){
     can_leave_init_mode();
 }
 
-static inline void can_mono_filter_init(){
+static inline void can__filter_bank0_init(){
     CAN_FILTER->FMR |= BIT(0); // initialize mode
-    CAN_FILTER->FM1R |= BIT(0); // identifier list mode on filter bank 0. 
-    //CAN_FILTER->FM1R &= ~BIT(0); // identifier mask mode on filter bank 0 
+    
+    //CAN_FILTER->FM1R |= BIT(0); // identifier list mode on filter bank 0. 
+    CAN_FILTER->FM1R &= ~BIT(0); // identifier mask mode on filter bank 0 
+
     CAN_FILTER->FS1R |= BIT(0); // 32 bit scale config
-    CAN_FILTER->FFA1R |= BIT(0); //filter assigned to FIFO1
+    //CAN_FILTER->FFA1R |= BIT(0); //filter assigned to FIFO1
+    CAN_FILTer->FFAIR &= ~BIT(0); // filter assigned to FIFO0
+
+    CAN1_FILTERBK[0].FR1 = 0;   // write FR1
+    CAN1_FILTERBK[0].FR2 = 0;   // write FR2
+
     CAN_FILTER->FA1R |= BIT(0); // filter is on
-
-
     CAN_FILTER->FMR &= ~BIT(0); // leave filter init mode
 }
 
