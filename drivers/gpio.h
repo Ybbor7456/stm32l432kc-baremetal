@@ -15,6 +15,7 @@ enum {GPIO_MODE_INPUT, GPIO_MODE_OUTPUT, GPIO_MODE_AF, GPIO_MODE_ANALOG };
 enum{ // 00, 01, 10, 11 for pullup/pull-down
   NO_PULL, UP, DOWN, RESERVED
 }; 
+enum {GPIO_LOW, GPIO_MEDIUM, GPIO_HIGH, GPIO_VHIGH}; 
 
 static inline void gpio_enable(uint16_t pin) { // enable GPIO clock port
   RCC->AHB2ENR |= BIT(PINBANK(pin));
@@ -33,13 +34,13 @@ static inline void gpio_set_af(uint16_t pin, uint8_t af_num) { // check datashee
   struct gpio *gpio = GPIO(PINBANK(pin));  // GPIO bank
   gpio_enable(pin);
   int n = PINNO(pin);                      // Pin number
-  gpio->AFR[n >> 3] &= ~(15UL << ((n & 7) * 4)); // clears, shifting by 3 is the same as dividing by 8
+  gpio->AFR[n >> 3] &= ~(15UL << ((n & 7) * 4)); // clears, shifting by 3 is the same as dividing by 8, selecting high or low
   gpio->AFR[n >> 3] |= ((uint32_t) af_num) << ((n & 7) * 4); // sets 
 }
 
 static inline void gpio_write(uint16_t pin, bool val) {
   struct gpio *gpio = GPIO(PINBANK(pin));
-  gpio->BSRR = (1U << PINNO(pin)) << (val ? 0 : 16);
+  gpio->BSRR = (1U << PINNO(pin)) << (val ? 0 : 16); // writing to the BSSR is atomic unlike the ODR
 }
 
 static inline bool gpio_read_pin(uint16_t pin) {
@@ -69,6 +70,14 @@ static inline void gpio_set_speed(uint16_t pin) {
   int n = PINNO(pin);
   gpio->OSPEEDR &= ~(3U << (n * 2));    // clear
   gpio->OSPEEDR |=  (3U << (n * 2));    // 11 = (very) high, 10 is high, 01 medium, 00 slow
+}
+
+static inline void gpio_set_select_speed(uint16_t pin, uint8_t speed) {
+  struct gpio *gpio = GPIO(PINBANK(pin));
+  gpio_enable(pin);
+  int n = PINNO(pin);
+  gpio->OSPEEDR &= ~(3U << (n * 2));    // clear 2 bit field
+  gpio->OSPEEDR |=  ((speed & 0x03U) << (n * 2)); 
 }
 
 static inline void gpio_set_open_drain(uint16_t pin) {
