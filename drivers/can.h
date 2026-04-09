@@ -83,3 +83,41 @@ static inline void can_init(void){
     can_filter_bank0_init(); 
     can_leave_init_mode(); 
 }
+
+static inline int8_t can_TX_get_empty(void){ // check if a TX mailbox is empty
+    if(CAN_CORE->TSR & BIT(26)){return 0;} 
+    if(CAN_CORE->TSR & BIT(27)){return 1;} 
+    if(CAN_CORE->TSR & BIT(28)){return 2;} 
+    else return -1; 
+}
+
+
+static inline void can_send_std(uint16_t idx, const uint8_t *data, uint8_t length){
+    int8_t mb = can_TX_get_empty();
+    if (mb == -1) return;
+
+    // set mailbox index based on availability
+    CAN_TMBOX[mb].TIR = 0; 
+    CAN_TMBOX[mb].TDTR = 0;
+    CAN_TMBOX[mb].TDLR = 0;
+    CAN_TMBOX[mb].TDHR = 0;
+
+    CAN_TMBOX[mb].TIR |= ((uint32_t)(idx & 0x7FFu) << 21); // STID[10:0] -> bits 31:21
+    CAN_TMBOX[mb].TIR &= ~BIT(2); // IDE = 0, standard frame
+    CAN_TMBOX[mb].TIR &= ~BIT(1);  // RTR = 0, data frame
+
+    CAN_TMBOX[mb].TDTR |= (length & 0xFu); // DLC bits 3:0
+
+    //
+    if (length > 0) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[0] << 0);
+    if (length > 1) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[1] << 8);
+    if (length > 2) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[2] << 16);
+    if (length > 3) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[3] << 24);
+
+    if (length > 4) CAN_TMBOX[mb].TDHR |= ((uint32_t)data[4] << 0);
+    if (length > 5) CAN_TMBOX[mb].TDHR |= ((uint32_t)data[5] << 8);
+    if (length > 6) CAN_TMBOX[mb].TDHR |= ((uint32_t)data[6] << 16);
+    if (length > 7) CAN_TMBOX[mb].TDHR |= ((uint32_t)data[7] << 24);
+
+    CAN_TMBOX[mb].TIR |= BIT(0);   // TXRQ
+}
