@@ -11,7 +11,6 @@
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
 
-
 static inline void can_gpio_init(uint16_t can_rx, uint16_t can_tx, ){
     RCC->APB1ENR1 |= BIT(25); // can peripheral clock
     gpio_enable(can_rx); 
@@ -91,7 +90,6 @@ static inline int8_t can_TX_get_empty(void){ // check if a TX mailbox is empty
     else return -1; 
 }
 
-
 static inline void can_send_std(uint16_t idx, const uint8_t *data, uint8_t length){
     int8_t mb = can_TX_get_empty();
     if (mb == -1) return;
@@ -108,7 +106,6 @@ static inline void can_send_std(uint16_t idx, const uint8_t *data, uint8_t lengt
 
     CAN_TMBOX[mb].TDTR |= (length & 0xFu); // DLC bits 3:0
 
-    //
     if (length > 0) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[0] << 0);
     if (length > 1) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[1] << 8);
     if (length > 2) CAN_TMBOX[mb].TDLR |= ((uint32_t)data[2] << 16);
@@ -120,4 +117,44 @@ static inline void can_send_std(uint16_t idx, const uint8_t *data, uint8_t lengt
     if (length > 7) CAN_TMBOX[mb].TDHR |= ((uint32_t)data[7] << 24);
 
     CAN_TMBOX[mb].TIR |= BIT(0);   // TXRQ
+}
+
+static inline bool can_fifo0_pending(void){
+    return(CAN_CORE->RF0R & 0x3U) != 0; 
+}
+
+typedef struct {
+    uint32_t id;
+    uint8_t dlc;
+    uint8_t data[8];
+} can_msg_t;
+
+static inline void can_read_fifo0(can_msg_t *msg) {
+    // Check if a message is actually there
+    if(!can_fifo0_pending()){
+        return; 
+    }
+    // Extract Identifier 
+    if ((CAN_CORE->RIR & BIT(2)) == 0) {
+        msg->id = (CAN_CORE->RIR >> 21) & 0x7FFu;
+    } else {
+        msg->id = (CAN_CORE->RIR >> 3) & 0x1FFFFFFFu;
+    }
+    //Extract Data Length Code (DLC is bits 3:0)
+    msg->dlc = (uint8_t)(CAN_CORE->RDTR & 0xFu);
+
+    uint32_t low = CAN_CORE->RDLR;
+    msg->data[0] = (uint8_t)(low >> 0);
+    msg->data[1] = (uint8_t)(low >> 8);
+    msg->data[2] = (uint8_t)(low >> 16);
+    msg->data[3] = (uint8_t)(low >> 24);
+
+    uint32_t high = CAN_CORE->RDHR;
+    msg->data[4] = (uint8_t)(high >> 0);
+    msg->data[5] = (uint8_t)(high >> 8);
+    msg->data[6] = (uint8_t)(high >> 16);
+    msg->data[7] = (uint8_t)(high >> 24);
+
+    // release the FIFO
+    CAN_CORE->RFR |= BIT(5); 
 }
