@@ -96,6 +96,9 @@ Still needs a debounce
 NVIC - 
 ISR -
 
+## SPI
 
+
+## CAN
 
 
