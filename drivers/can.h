@@ -104,28 +104,28 @@ static inline void can_send_std(can_msg_t *msg){
     if (dlc > 8) dlc = 8;
 
     // set mailbox index based on availability
-    CAN_TMBOX[mb].TIR  = 0;
-    CAN_TMBOX[mb].TDTR = 0;
-    CAN_TMBOX[mb].TDLR = 0;
-    CAN_TMBOX[mb].TDHR = 0;
+    CAN_TXMBOX[mb].TIR  = 0;
+    CAN_TXMBOX[mb].TDTR = 0;
+    CAN_TXMBOX[mb].TDLR = 0;
+    CAN_TXMBOX[mb].TDHR = 0;
 
-    CAN_TMBOX[mb].TIR |= ((uint32_t)(msg->id & 0x7FFu) << 21); // STID[10:0] -> bits 31:21
-    CAN_TMBOX[mb].TIR &= ~BIT(2); // IDE = 0, standard frame
-    CAN_TMBOX[mb].TIR &= ~BIT(1);  // RTR = 0, data frame
+    CAN_TXMBOX[mb].TIR |= ((uint32_t)(msg->id & 0x7FFu) << 21); // STID[10:0] -> bits 31:21
+    CAN_TXMBOX[mb].TIR &= ~BIT(2); // IDE = 0, standard frame
+    CAN_TXMBOX[mb].TIR &= ~BIT(1);  // RTR = 0, data frame
 
-    CAN_TMBOX[mb].TDTR |= (msg->dlc & 0xFu); // DLC bits 3:0
+    CAN_TXMBOX[mb].TDTR |= (msg->dlc & 0xFu); // DLC bits 3:0
+    
+    if (dlc > 0) CAN_TXMBOX[mb].TDLR |= ((uint32_t)msg->data[0] << 0);
+    if (dlc > 1) CAN_TXMBOX[mb].TDLR |= ((uint32_t)msg->data[1] << 8);
+    if (dlc > 2) CAN_TXMBOX[mb].TDLR |= ((uint32_t)msg->data[2] << 16);
+    if (dlc > 3) CAN_TXMBOX[mb].TDLR |= ((uint32_t)msg->data[3] << 24);
 
-    if (dlc > 0) CAN_TMBOX[mb].TDLR |= ((uint32_t)msg->data[0] << 0);
-    if (dlc > 1) CAN_TMBOX[mb].TDLR |= ((uint32_t)msg->data[1] << 8);
-    if (dlc > 2) CAN_TMBOX[mb].TDLR |= ((uint32_t)msg->data[2] << 16);
-    if (dlc > 3) CAN_TMBOX[mb].TDLR |= ((uint32_t)msg->data[3] << 24);
+    if (dlc > 4) CAN_TXMBOX[mb].TDHR |= ((uint32_t)msg->data[4] << 0);
+    if (dlc > 5) CAN_TXMBOX[mb].TDHR |= ((uint32_t)msg->data[5] << 8);
+    if (dlc > 6) CAN_TXMBOX[mb].TDHR |= ((uint32_t)msg->data[6] << 16);
+    if (dlc > 7) CAN_TXMBOX[mb].TDHR |= ((uint32_t)msg->data[7] << 24);
 
-    if (dlc > 4) CAN_TMBOX[mb].TDHR |= ((uint32_t)msg->data[4] << 0);
-    if (dlc > 5) CAN_TMBOX[mb].TDHR |= ((uint32_t)msg->data[5] << 8);
-    if (dlc > 6) CAN_TMBOX[mb].TDHR |= ((uint32_t)msg->data[6] << 16);
-    if (dlc > 7) CAN_TMBOX[mb].TDHR |= ((uint32_t)msg->data[7] << 24);
-
-    CAN_TMBOX[mb].TIR |= BIT(0); // TXRQ
+    CAN_TXMBOX[mb].TIR |= BIT(0); // TXRQ
 }
 
 static inline bool can_fifo0_pending(void){
