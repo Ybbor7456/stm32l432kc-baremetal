@@ -84,6 +84,13 @@ int main(void) {
   adc_set_sequence(0, 6, smp); 
   dma1_ch1_enable(); 
   start_adc(); 
+  can_init();
+
+  can_msg_t msg = {
+    .id = 0x123,
+    .dlc = 4,
+    .data = {0x11, 0x22, 0x33, 0x44}
+  };
   
   //printf("spi1 before init \r\n");
   spi1_gpio_init(spi_sck, miso, mosi, cs);
@@ -104,10 +111,15 @@ int main(void) {
       //adxl345_read_xyz(cs, &x, &y, &z);
       //printf("X: %d | Y: %d | Z: %d\r\n", x, y, z);
       //delay_ms(250); no longer functions due to disabling tickint. use crude delay
-      printf("SYSCLK-ish check via UART\r\n");
-      printf("PSC=%lu ARR=%lu CNT=%lu\r\n", TIM2->PSC, TIM2->ARR, TIM2->CNT);
-      tim2_delay_ms(500); 
-      printf("tick \r\n");
+      //printf("SYSCLK-ish check via UART\r\n");
+      //printf("PSC=%lu ARR=%lu CNT=%lu\r\n", TIM2->PSC, TIM2->ARR, TIM2->CNT);
+      //tim2_delay_ms(500); 
+      //printf("tick \r\n");
+      can_send_std(&msg); // wait for anothe stm32l4 to come in mail to test receiver side
+        printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
+          msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
+        delay_ms(500);
+
     }
   return 0;
 }
