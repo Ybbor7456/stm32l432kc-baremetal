@@ -12,6 +12,7 @@
 #include "fnxs.h"
 #include "devices/adxl345.h"
 #include "drivers/tim.h"
+#include "drivers/iwdg.h"
 
 static volatile uint32_t s_ticks; // volatile is important!!
 /* void SysTick_Handler(void) {
@@ -30,7 +31,6 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
   }
 }
 
-//  GPIOB port 3 has onboard LED 
 
 int main(void) {
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
@@ -41,8 +41,8 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
-  uint16_t can_rx = PIN('A', 11);
-  uint16_t can_tx = PIN('A', 12); 
+  //uint16_t can_rx = PIN('A', 11);
+  //uint16_t can_tx = PIN('A', 12); 
   //int16_t x,y,z;
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
@@ -57,7 +57,7 @@ int main(void) {
   //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
   uart_init(USART2, 115200);
   for (volatile int i = 0; i < 100000; i++) (void)0;
-  //printf("UART alive\r\n"); 
+
  
   systick_init(SYSCLK_HZ  / 1000);         // Tick every 1 ms
  
@@ -67,8 +67,6 @@ int main(void) {
   nvic_enable_irq(IRQ_EXTI9_5);
   irq_global_enable(); 
   
-  // printf("UART alive2\r\n"); 
-  //EXTI->SWIER1 |= BIT(7); // test 
   
   gpio_set_mode(led, GPIO_MODE_OUTPUT);  // Set blue LED to output mode
   gpio_set_mode(btn, GPIO_MODE_INPUT); 
@@ -84,13 +82,14 @@ int main(void) {
   adc_set_sequence(0, 6, smp); 
   dma1_ch1_enable(); 
   start_adc(); 
-  can_init();
+  //can_init();
 
+  /*
   can_msg_t msg = {
     .id = 0x123,
     .dlc = 4,
     .data = {0x11, 0x22, 0x33, 0x44}
-  };
+  }; */
   
   //printf("spi1 before init \r\n");
   spi1_gpio_init(spi_sck, miso, mosi, cs);
@@ -102,7 +101,21 @@ int main(void) {
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
   adxl345_init(cs); 
-  tim2_init(); 
+  tim2_init();
+  
+  // timeout = ((rlr +1)*prescaler)/LSI, LSI = 32kHz, prescaler = 64, timeout = 2 (roughly)
+  uint32_t pr = 0x4u; // 
+  uint32_t rlr = 0x3E7u;// 999
+  
+  iwdg_init(pr, rlr);
+  iwdg_refresh();
+  tim2_delay_ms(1000);
+  iwdg_refresh();
+  iwdg_refresh();
+  gpio_write(led, true);
+  iwdg_refresh();
+  g_btn_event = 0;
+  EXTI->PR1 = BIT(7);
     for (;;) {
       // uart_led(&timer, period, s_ticks, led);
       //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
@@ -115,11 +128,19 @@ int main(void) {
       //printf("PSC=%lu ARR=%lu CNT=%lu\r\n", TIM2->PSC, TIM2->ARR, TIM2->CNT);
       //tim2_delay_ms(500); 
       //printf("tick \r\n");
+      /*
       can_send_std(&msg); // wait for anothe stm32l4 to come in mail to test receiver side
         printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
           msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
         delay_ms(500);
-
+      */
+    if (g_btn_event) {
+      g_btn_event = 0;
+      printf("button pressed \r\n");
+      while (1) {}
+    }
+    
+    iwdg_refresh();
     }
   return 0;
 }

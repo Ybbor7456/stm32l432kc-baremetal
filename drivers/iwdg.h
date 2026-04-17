@@ -20,7 +20,7 @@ static inline void iwdg_start(void)   { IWDG->KR = 0xCCCC;}
 static inline void iwdg_refresh(void) { IWDG->KR = 0xAAAA;}
 
 static inline void iwdg_wait_ready(void) {
-    while (IWDG->SR != 0) {
+    while (IWDG->SR & (BIT(0) | BIT(1))) {
     }
 }
 
@@ -36,7 +36,7 @@ static inline void iwdg_init(uint32_t pr, uint32_t rlr) {
     iwdg_unlock();
     iwdg_set_prescaler(pr);
     iwdg_set_reload(rlr);
-    iwdg_wait_ready();
+    //iwdg_wait_ready(); // hanging
     iwdg_refresh(); 
     iwdg_start();
 }
