@@ -215,3 +215,8 @@ struct can_filter_bank{
   volatile uint32_t FR1, FR2;
 };
 #define CAN1_FILTERBK  ((struct can_filter_bank *)(CAN1_BASE + 0x240u))
+
+struct iwdg{
+  volatile uint32_t KR, PR, RLR, SR, WINR;
+}; 
+#define IWDG ((struct iwdg *)(0x40003000u))
