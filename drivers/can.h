@@ -11,7 +11,7 @@
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
 
-static inline void can_gpio_init(uint16_t can_rx, uint16_t can_tx, ){
+static inline void can_gpio_init(uint16_t can_rx, uint16_t can_tx){
     RCC->APB1ENR1 |= BIT(25); // can peripheral clock
     gpio_enable(can_rx); 
     gpio_enable(can_tx); // redundant but harmless
@@ -66,17 +66,17 @@ static inline void can_filter_bank0_init(){
 
     CAN_FILTER->FS1R |= BIT(0); // 32 bit scale config
     //CAN_FILTER->FFA1R |= BIT(0); //filter assigned to FIFO1
-    CAN_FILTER->FFAIR &= ~BIT(0); // filter assigned to FIFO0
+    CAN_FILTER->FFA1R &= ~BIT(0); // filter assigned to FIFO0 at bank 0
 
     CAN1_FILTERBK[0].FR1 = 0;   // write FR1
     CAN1_FILTERBK[0].FR2 = 0;   // write FR2
 
-    CAN_FILTER->FA1R |= BIT(0); // filter is on
+    CAN_FILTER->FA1R |= BIT(0); // filter is on, bank 0
     CAN_FILTER->FMR &= ~BIT(0); // leave filter init mode
 }
 
-static inline void can_init(void){
-    can_gpio_init(); // does not need MCR bit 0 (INRW) set
+static inline void can_init(uint16_t can_rx, uint16_t can_tx){
+    can_gpio_init(can_rx, can_tx); // does not need MCR bit 0 (INRW) set
     can_enter_init_mode();
     can_btr_config();
     can_filter_bank0_init(); 
@@ -138,26 +138,26 @@ static inline void can_read_fifo0(can_msg_t *msg) {
         return; 
     }
     // Extract Identifier 
-    if ((CAN_CORE->RIR & BIT(2)) == 0) {
-        msg->id = (CAN_CORE->RIR >> 21) & 0x7FFu;
+    if ((CAN_RXMBOX->RIR & BIT(2)) == 0) {
+        msg->id = (CAN_RXMBOX->RIR >> 21) & 0x7FFu;
     } else {
-        msg->id = (CAN_CORE->RIR >> 3) & 0x1FFFFFFFu;
+        msg->id = (CAN_RXMBOX->RIR >> 3) & 0x1FFFFFFFu;
     }
     //Extract Data Length Code (DLC is bits 3:0)
-    msg->dlc = (uint8_t)(CAN_CORE->RDTR & 0xFu);
+    msg->dlc = (uint8_t)(CAN_RXMBOX->RDTR & 0xFu);
 
-    uint32_t low = CAN_CORE->RDLR;
+    uint32_t low = CAN_RXMBOX->RDLR;
     msg->data[0] = (uint8_t)(low >> 0);
     msg->data[1] = (uint8_t)(low >> 8);
     msg->data[2] = (uint8_t)(low >> 16);
     msg->data[3] = (uint8_t)(low >> 24);
 
-    uint32_t high = CAN_CORE->RDHR;
+    uint32_t high = CAN_RXMBOX->RDHR;
     msg->data[4] = (uint8_t)(high >> 0);
     msg->data[5] = (uint8_t)(high >> 8);
     msg->data[6] = (uint8_t)(high >> 16);
     msg->data[7] = (uint8_t)(high >> 24);
 
     // release the FIFO
-    CAN_CORE->RFR |= BIT(5); 
+    CAN_CORE->RF0R |= BIT(5); 
 }

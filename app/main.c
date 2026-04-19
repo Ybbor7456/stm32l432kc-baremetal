@@ -13,6 +13,7 @@
 #include "devices/adxl345.h"
 #include "drivers/tim.h"
 #include "drivers/iwdg.h"
+#include "drivers/can.h"
 
 static volatile uint32_t s_ticks; // volatile is important!!
 /* void SysTick_Handler(void) {
@@ -41,8 +42,8 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
-  //uint16_t can_rx = PIN('A', 11);
-  //uint16_t can_tx = PIN('A', 12); 
+  uint16_t can_rx = PIN('A', 11);
+  uint16_t can_tx = PIN('A', 12); 
   //int16_t x,y,z;
   //const uint8_t af_num = 2; 
   const uint16_t request_ID = 0; // ADC1 channel 1, Table 45
@@ -84,12 +85,6 @@ int main(void) {
   start_adc(); 
   //can_init();
 
-  /*
-  can_msg_t msg = {
-    .id = 0x123,
-    .dlc = 4,
-    .data = {0x11, 0x22, 0x33, 0x44}
-  }; */
   
   //printf("spi1 before init \r\n");
   spi1_gpio_init(spi_sck, miso, mosi, cs);
@@ -104,43 +99,47 @@ int main(void) {
   tim2_init();
   
   // timeout = ((rlr +1)*prescaler)/LSI, LSI = 32kHz, prescaler = 64, timeout = 2 (roughly)
-  uint32_t pr = 0x4u; // 
-  uint32_t rlr = 0x3E7u;// 999
+  //uint32_t pr = 0x4u; // 
+  //uint32_t rlr = 0x3E7u;// 999
   
-  iwdg_init(pr, rlr);
-  iwdg_refresh();
-  tim2_delay_ms(1000);
-  iwdg_refresh();
-  iwdg_refresh();
-  gpio_write(led, true);
-  iwdg_refresh();
-  g_btn_event = 0;
-  EXTI->PR1 = BIT(7);
+  //iwdg_init(pr, rlr);
+  //iwdg_refresh();
+
+
+  can_msg_t msg = { // sender side
+    .id = 0x123,
+    .dlc = 4,
+    .data = {0x11, 0x22, 0x33, 0x44}
+  }; 
+
+/*
+ can_msg_t rx = { // sender side
+    .id = 0x123,
+    .dlc = 4,
+    .data = {0x11, 0x22, 0x33, 0x44}
+  }; */
+
+  can_init(can_rx, can_tx); 
+
     for (;;) {
-      // uart_led(&timer, period, s_ticks, led);
-      //led_on_off(&g_btn_event, led, &led_on, s_ticks); 
-      //adc_read(&t, s_ticks, &adc_sample);
-      //reg_lights(cs); // blocking (delay(250ms)) 
-      //adxl345_read_xyz(cs, &x, &y, &z);
-      //printf("X: %d | Y: %d | Z: %d\r\n", x, y, z);
-      //delay_ms(250); no longer functions due to disabling tickint. use crude delay
-      //printf("SYSCLK-ish check via UART\r\n");
-      //printf("PSC=%lu ARR=%lu CNT=%lu\r\n", TIM2->PSC, TIM2->ARR, TIM2->CNT);
-      //tim2_delay_ms(500); 
-      //printf("tick \r\n");
+
+      // receive 
       /*
+      printf("RF0R=0x%08lx\r\n", CAN_CORE->RF0R);
+      if (can_fifo0_pending()) {
+        can_read_fifo0(&rx);
+        printf("RX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
+        rx.id, rx.dlc, rx.data[0], rx.data[1], rx.data[2], rx.data[3]);
+      } */
+      
+      //transmit
+      printf("Before: TSR=0x%08lx ESR=0x%08lx\r\n", CAN_CORE->TSR, CAN_CORE->ESR);
       can_send_std(&msg); // wait for anothe stm32l4 to come in mail to test receiver side
-        printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
-          msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
-        delay_ms(500);
-      */
-    if (g_btn_event) {
-      g_btn_event = 0;
-      printf("button pressed \r\n");
-      while (1) {}
-    }
-    
-    iwdg_refresh();
+      printf("AFTER TXREQ: TSR=0x%08lx ESR=0x%08lx\r\n", CAN_CORE->TSR, CAN_CORE->ESR);
+      printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
+        msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
+      tim2_delay_ms(2000);
+      printf("testing loop. \r\n"); 
     }
   return 0;
 }
