@@ -35,6 +35,7 @@ static inline void can_gpio_init(uint16_t can_rx, uint16_t can_tx){
 }
 
 static inline void can_enter_init_mode(void){
+    CAN_CORE->MCR &= ~BIT(1); // cleaer sleep 
     CAN_CORE->MCR |= BIT(0); // set      
     while (!(CAN_CORE->MSR & BIT(0))) {} // wait for init acknowledgement
 }
@@ -42,6 +43,7 @@ static inline void can_enter_init_mode(void){
 static inline void can_leave_init_mode(void){
     CAN_CORE->MCR &= ~BIT(0); // clear
     while (CAN_CORE->MSR & BIT(0)) {} // wait for INAK to clear
+    while(CAN_CORE->MSR & BIT(1)){}
 }
 
 static inline void can_btr_config(void){

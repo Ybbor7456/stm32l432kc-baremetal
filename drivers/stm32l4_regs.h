@@ -120,6 +120,7 @@ sram2 key register
 #define NVIC_ICER1 (*(volatile uint32_t *)0xE000E184u)
 #define NVIC_IPR   ((volatile uint8_t  *)0xE000E400u)   // priority bytes
 
+
 //This is not a register. It’s just a number telling you which IRQ line in the NVIC corresponds to the “EXTI lines 5..9”
 #define IRQ_EXTI9_5 23u
 
@@ -207,14 +208,14 @@ struct can_rx_mailbox{
 #define CAN_RXMBOX ((struct can_rx_mailbox *)(0x40006400u + 0x1B0))
 
 struct can_filter{
-  volatile uint32_t FMR, FM1R, RESERVED, FS1R, RESERVED, FFA1R, FA1R;
+  volatile uint32_t FMR, FM1R, RESERVED0, FS1R, RESERVED1, FFA1R, RESERVED2, FA1R;
 };
 #define CAN_FILTER ((struct can_filter *)(0x40006400u + 0x200))
 
 struct can_filter_bank{
   volatile uint32_t FR1, FR2;
 };
-#define CAN1_FILTERBK  ((struct can_filter_bank *)(CAN1_BASE + 0x240u))
+#define CAN1_FILTERBK  ((struct can_filter_bank *)(0x40006400 + 0x240u))
 
 struct iwdg{
   volatile uint32_t KR, PR, RLR, SR, WINR;
