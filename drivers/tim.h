@@ -96,5 +96,10 @@ static inline void tim2_pwm_init(uint16_t pin, uint8_t ch_num){
     TIM2->EGR |= BIT(0); // update event
 }
 
+static inline void tim2_pwm_set_duty(uint32_t duty) {
+    if (duty > 100) duty = 100; 
+    TIM2->CCR1 = (duty * (TIM2->ARR + 1)) / 100;
+}
+
 
 // add ISR increments to be non-blocking
