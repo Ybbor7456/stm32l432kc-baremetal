@@ -56,8 +56,10 @@ static inline void can_btr_config(void){
         ((sjw & 0x3u)  << 24) | // # of time quantum of a bit change during resynchronization to compensate for phase errors
         ((ts2 & 0x7u)  << 20) | // duration from sample point to end of bit, a time buffer.
         ((ts1 & 0xFu)  << 16) | // 1100 << 16, duration from start of bit to sample point
-        ((brp & 0x3FFu) << 0);  // baud rate prescaler = 5, divides peripheral clock to set time quantum for CAN
+        ((brp & 0x3FFu) << 0); // baud rate prescaler = 5, divides peripheral clock to set time quantum for CAN
+        //BIT(30); // loopback
     //can_leave_init_mode();
+
 }
 
 static inline void can_filter_bank0_init(){
@@ -131,10 +133,12 @@ static inline void can_send_std(can_msg_t *msg){
 }
 
 static inline bool can_fifo0_pending(void){
+    printf("testing can_fifo0 pending \r\n");
     return(CAN_CORE->RF0R & 0x3U) != 0; 
 }
 
 static inline void can_read_fifo0(can_msg_t *msg) {
+    printf("testing can_read_fifo0 \r\n"); 
     // Check if a message is actually there
     if(!can_fifo0_pending()){
         return; 

@@ -34,6 +34,7 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
 
 
 int main(void) {
+  
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
   uint16_t btn = PIN('B', 7);
   uint16_t adc = PIN('A', 1);     // adc PA1 ADC1_6
@@ -105,41 +106,53 @@ int main(void) {
   //iwdg_init(pr, rlr);
   //iwdg_refresh();
 
-
-  can_msg_t msg = { // sender side
+ /*
+ can_msg_t msg = { // sender side
     .id = 0x123,
     .dlc = 4,
     .data = {0x11, 0x22, 0x33, 0x44}
-  }; 
+  }; */ 
 
-/*
- can_msg_t rx = { // sender side
-    .id = 0x123,
-    .dlc = 4,
-    .data = {0x11, 0x22, 0x33, 0x44}
-  }; */
-
+  can_msg_t rx = {0}; 
   can_init(can_rx, can_tx); 
-
     for (;;) {
-
-      // receive 
-      /*
-      printf("RF0R=0x%08lx\r\n", CAN_CORE->RF0R);
+    // receive 
+      
+      tim2_delay_ms(2000); 
+      printf("Hi\r\n");
+      printf("RF0R=0x%08lx  MSR=0x%08lx\r\n ", CAN_CORE->RF0R, CAN_CORE->MSR);
+      printf("RF1R=0x%08lx  ESR=0x%08lx\r\n ", CAN_CORE->RF1R, CAN_CORE->ESR);
+      
       if (can_fifo0_pending()) {
+        printf("hey \r\n"); 
         can_read_fifo0(&rx);
+        
         printf("RX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
         rx.id, rx.dlc, rx.data[0], rx.data[1], rx.data[2], rx.data[3]);
-      } */
+      } 
       
-      //transmit
+      //transmit 
+      /*
+      tim2_delay_ms(2000); 
       printf("Before: TSR=0x%08lx ESR=0x%08lx\r\n", CAN_CORE->TSR, CAN_CORE->ESR);
       can_send_std(&msg); // wait for anothe stm32l4 to come in mail to test receiver side
       printf("AFTER TXREQ: TSR=0x%08lx ESR=0x%08lx\r\n", CAN_CORE->TSR, CAN_CORE->ESR);
       printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
         msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
       tim2_delay_ms(2000);
-      printf("testing loop. \r\n"); 
-    }
+      printf("testing loop. \r\n"); */
+    } 
   return 0;
 }
+
+
+//loopback
+/*
+can_send_std(&msg); 
+tim2_delay_ms(100);   
+  if (can_fifo0_pending()) {
+    can_read_fifo0(&rx);
+    printf("RX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
+    rx.id, rx.dlc, rx.data[0], rx.data[1], rx.data[2], rx.data[3]);
+    tim2_delay_ms(1500);
+  } */ 
