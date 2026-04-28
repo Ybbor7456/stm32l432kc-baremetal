@@ -32,7 +32,28 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
   }
 }
 
+int main(void) {
+    uint16_t test_pin = PIN('A', 12);
+    //uint16_t test_pin = PIN ('A', 11); 
+    uart_init(USART2, 115200);
+    tim2_init();
+    gpio_set_mode(test_pin, GPIO_MODE_OUTPUT);
+    for (;;) {
+        gpio_write(test_pin, 1);
+        //printf("PA11 high \r\n");
+        printf("PA12 high\r\n");
+        tim2_delay_ms(1000);
 
+        gpio_write(test_pin, 0);
+        //printf("PA11 low \r\n");
+        printf("PA12 low\r\n");
+        tim2_delay_ms(1000);
+    }
+    return 0;
+}
+
+
+/*
 int main(void) {
   
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
@@ -106,12 +127,12 @@ int main(void) {
   //iwdg_init(pr, rlr);
   //iwdg_refresh();
 
- /*
+ 
  can_msg_t msg = { // sender side
     .id = 0x123,
     .dlc = 4,
     .data = {0x11, 0x22, 0x33, 0x44}
-  }; */ 
+  };  
 
   can_msg_t rx = {0}; 
   can_init(can_rx, can_tx); 
@@ -132,7 +153,7 @@ int main(void) {
       } 
       
       //transmit 
-      /*
+      
       tim2_delay_ms(2000); 
       printf("Before: TSR=0x%08lx ESR=0x%08lx\r\n", CAN_CORE->TSR, CAN_CORE->ESR);
       can_send_std(&msg); // wait for anothe stm32l4 to come in mail to test receiver side
@@ -140,11 +161,11 @@ int main(void) {
       printf("TX: id=0x%03lx dlc=%u data=%02X %02X %02X %02X\r\n",
         msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2], msg.data[3]);
       tim2_delay_ms(2000);
-      printf("testing loop. \r\n"); */
+      printf("testing loop. \r\n"); 
     } 
   return 0;
 }
-
+*/
 
 //loopback
 /*
