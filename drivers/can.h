@@ -82,6 +82,7 @@ static inline void can_filter_bank0_init(){
 static inline void can_init(uint16_t can_rx, uint16_t can_tx){
     can_gpio_init(can_rx, can_tx); // does not need MCR bit 0 (INRW) set
     can_enter_init_mode();
+    CAN_CORE->MCR |= BIT(6);   // ABOM = auto bus-off management
     can_btr_config();
     can_filter_bank0_init(); 
     can_leave_init_mode(); 
