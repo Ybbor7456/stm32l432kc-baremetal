@@ -221,3 +221,8 @@ struct iwdg{
   volatile uint32_t KR, PR, RLR, SR, WINR;
 }; 
 #define IWDG ((struct iwdg *)(0x40003000u))
+
+struct rng{
+  volatile uint32_t cr, sr, dr; 
+}; 
+#define RNG ((struct rng *)(0x50060800u))
