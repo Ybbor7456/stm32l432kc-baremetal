@@ -16,7 +16,7 @@ static inline void rng_init(uint8_t clk){
     RCC->AHB2ENR |= BIT(18); // set RNG bus clock
     RCC->CCIPR &= ~(3u << 26); // clear
     RCC->CCIPR |= (clk << 26); // set kernel clock src for USB, RNG, SDMMC
-    RNG->CR |= BTI(2); // set RNGEN
+    RNG->CR |= BIT(2); // set RNGEN
 }
 
 static inline uint32_t rng_read(){
