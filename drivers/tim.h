@@ -101,5 +101,62 @@ static inline void tim2_pwm_set_duty(uint32_t duty) {
     TIM2->CCR1 = (duty * (TIM2->ARR + 1)) / 100;
 }
 
-
 // add ISR increments to be non-blocking
+
+
+
+static inline void tim6_init(void){
+    RCC->APB1ENR1 |= BIT(4); // enable TIM6 
+    // psc = (fck_psc/Fcnt) - 1. stm32l4 4MHz MSI clock, 4/Fcnt - 1 = 79. Fcnt = 1MHz. 
+    // ARR [ Fcnt/reload) - 1, 1MHz/1000s -1 = 9999
+    TIM6->CR1 = 0;
+    TIM6->CNT = 0;
+    TIM6->PSC = 3;
+    TIM6->ARR = 999;
+    TIM6->EGR |= BIT(0); // update gen. 
+    TIM6->SR &= ~BIT(0); // clear SR UIF (UIF is automatically set)
+    TIM6->CR1 |= BIT(0); // timer enable
+}
+
+static inline void tim6_wait(void) {
+    while ((TIM6->SR & BIT(0)) == 0) {
+    }
+    TIM6->SR &= ~BIT(0);
+}
+
+static inline void tim6_delay_ms(uint16_t tim6_ms){ // 2^-16) -1 = 65535 ms max, 66(ish) seconds
+    while(tim6_ms--){
+        tim6_wait();
+    }
+}
+
+static inline void tim6_test(void){
+    uint32_t a = TIM6->CNT;
+    printf("Time A: %ld \r\n", a); 
+    tim6_delay_ms(100); 
+    uint32_t b = TIM6->CNT;
+    printf("Time B: %ld \r\n", b); 
+    tim6_delay_ms(100); 
+}
+
+// start timer, stop timer, reset timer, 
+static inline void tim6_start(void){
+    TIM6->CR1 |= BIT(0); 
+}
+
+static inline void tim6_stop(void){
+    TIM6->CR1 &= ~BIT(0); 
+}
+
+static inline void tim6_reset(void){
+    TIM6->CNT = 0;
+    TIM6->SR &= ~BIT(0);
+}
+
+static inline uint32_t tim6_get_count(void){
+    return TIM6->CNT;
+}
+
+static inline void tim6_clear_uif(void){
+    TIM6->SR &= ~BIT(0);
+}

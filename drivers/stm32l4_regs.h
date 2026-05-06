@@ -226,3 +226,8 @@ struct rng{
   volatile uint32_t CR, SR, DR; 
 }; 
 #define RNG ((struct rng *)(0x50060800u))
+
+struct tim6{
+  volatile uint32_t CR1, CR2, DIER,SR, EGR, CNT, PSC, ARR;
+};
+#define TIM6 ((struct tim6 *)(0x40001000u))
