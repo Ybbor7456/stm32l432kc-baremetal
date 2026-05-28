@@ -19,8 +19,4 @@ static inline void rng_init(uint8_t clk){
     RNG->CR |= BIT(2); // set RNGEN
 }
 
-static inline uint32_t rng_read(){
-    while(!(RNG->SR & BIT(0)));
-    uint32_t data = RNG->DR;
-    return data; 
-}
+uint32_t rng_read();
