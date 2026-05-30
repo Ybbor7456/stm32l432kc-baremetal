@@ -92,3 +92,21 @@ void adc_set_configs(uint8_t res_bit, bool left_align, bool conv_mode, uint16_t 
   gpio_set_pupd(pin, NO_PULL); 
   //printf("adc set configs stop \r\n"); 
 }
+
+void adc_set_sequence(uint8_t len, uint8_t ch, uint8_t sample_rate){
+  //printf("set seq. start \r\n"); 
+   if (ADC1->CR & BIT(2)) {              
+    ADC1->CR |= BIT(4);
+    while (ADC1->CR & BIT(4)) (void)0;     // wait ADSTP clears
+    while (ADC1->CR & BIT(2)) (void)0;     // wait ADSTART clears
+  } // stops the conv. 
+  // clear and set conv bits
+  ADC1->SQR1 = (ADC1->SQR1 & ~((0xFU << 0) | (0x1FU << 6)))
+  | ((len & 0xFU) << 0)   // L[3:0]
+  | ((ch & 0x1FU) << 6); // SQ1[4:0]
+  
+  // set sample time (ahrdcodes channel 6)
+  ADC1->SMPR1 = (ADC1->SMPR1 & ~(0x7U << 18)) | ((sample_rate & 0x7U)<<18); 
+  //printf("set seq. stop \r\n"); 
+ // printf("adc_set_sequence args: len=%u ch=%u smp=%u\r\n", len, ch, sample_rate);
+}
