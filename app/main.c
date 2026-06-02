@@ -15,11 +15,12 @@
 #include "drivers/iwdg.h"
 #include "drivers/can.h"
 #include "drivers/rng.h"
+#include "drivers/dac_dma.h"
 
 static volatile uint32_t s_ticks; // volatile is important!!
 void SysTick_Handler(void) {
   s_ticks++;
- } 
+} 
 
 volatile uint8_t g_btn_event = 0; // for interrupts S / baud; 
 
@@ -105,11 +106,21 @@ int main(void) {
   
   //iwdg_init(pr, rlr);
   //iwdg_refresh();
-  
+  dac_clock_enable();
+  dac_gpio_init(PIN('A', 4), NO_PULL);
+  dac_ch1_normal_mode();
+  dac_enable_ch1();
   for (;;) {
-    uint32_t rng_int = rng_read(); 
-    printf("RNG Val: %lu \r\n", rng_int); 
-    tim2_delay_ms(1000); 
+    while (1) {
+      dac_ch1_write_12bit(0);
+      delay_ms(2000);
+
+      dac_ch1_write_12bit(2048);
+      delay_ms(2000);
+
+      dac_ch1_write_12bit(4095);
+      delay_ms(2000);
+    }
   } 
   return 0;
 }
