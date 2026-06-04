@@ -36,6 +36,7 @@ void EXTI9_5_IRQHandler(void) // use this for button hardware, don't use static 
 
 
 int main(void) {
+  
   uint16_t led = PIN('B', 3);            // Green LED, PIN('B' - A  << 8) | Num.... 0x100 | 3 = 0x103 = led
   uint16_t btn = PIN('B', 7);
   uint16_t adc = PIN('A', 1);     // adc PA1 ADC1_6
@@ -44,6 +45,7 @@ int main(void) {
   uint16_t miso = PIN('A',6 );
   uint16_t mosi = PIN('A',7 ); 
   uint16_t cs = PIN('B',0 ); 
+  
   //uint16_t can_rx = PIN('A', 11);
   //uint16_t can_tx = PIN('A', 12); 
   //int16_t x,y,z;
@@ -55,10 +57,10 @@ int main(void) {
   uint8_t align = 0; // 0 if right
   uint8_t single = 0; // single conversion 
   
-  
   // upper byte stores 01 = B, and lower stores 03 for LED
   //RCC->AHB2ENR |= BIT(PINBANK(led));     // Enable GPIO clock for LED, PINBANK(0x103) >> 8 = 0
-  uart_init(USART2, 115200);
+  uart_init(USART2, 115200); // all printing must be done after uart_init
+  
   for (volatile int i = 0; i < 100000; i++) (void)0;
 
  
@@ -85,7 +87,7 @@ int main(void) {
   adc_set_sequence(0, 6, smp); 
   dma1_ch1_enable(); 
   start_adc(); 
-  
+
 
   //printf("spi1 before init \r\n");
   spi1_gpio_init(spi_sck, miso, mosi, cs);
@@ -106,20 +108,20 @@ int main(void) {
   
   //iwdg_init(pr, rlr);
   //iwdg_refresh();
+  printf("hello1 \r\n"); 
   dac_clock_enable();
+  printf("hello2 \r\n"); 
   dac_gpio_init(PIN('A', 4), NO_PULL);
+  printf("hello3 \r\n"); 
   dac_ch1_normal_mode();
+  printf("hello4 \r\n"); 
   dac_enable_ch1();
-  for (;;) {
-    while (1) {
-      dac_ch1_write_12bit(0);
-      delay_ms(2000);
-
-      dac_ch1_write_12bit(2048);
-      delay_ms(2000);
-
-      dac_ch1_write_12bit(4095);
-      delay_ms(2000);
+  printf("hello5 \r\n"); 
+  while (1) {
+    for (uint16_t v = 0; v < 4096; v++) {
+        dac_ch1_write_12bit(v);
+        printf("hi\r\n");
+        tim2_delay_ms(3000);
     }
   } 
   return 0;
