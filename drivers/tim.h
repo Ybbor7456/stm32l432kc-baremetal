@@ -10,6 +10,7 @@
 #include "drivers/util.h"
 #include "drivers/stm32l4_regs.h"
 #include "bsp/board.h"
+#include "drivers/gpio.h"
 
 static inline void tim2_init(void){
     RCC->APB1ENR1 |= BIT(0); // enable TIM2 
@@ -140,4 +141,16 @@ static inline uint32_t tim6_get_count(void){
 
 static inline void tim6_clear_uif(void){
     TIM6->SR &= ~BIT(0);
+}
+
+static inline void tim6_trgo_init(uint32_t psc, uint32_t arr){
+    RCC->APB1ENR1 |= BIT(4);    // TIM6 clock enable
+    TIM6->CR1 = 0;              // counter disabled while configuring
+    TIM6->CNT = 0;
+    TIM6->PSC = psc;
+    TIM6->ARR = arr;
+    TIM6->CR2 &= ~(0x7u << 4);
+    TIM6->CR2 |=  (0x2u << 4);  // MMS = 010: update event as TRGO
+    TIM6->EGR = BIT(0);         // load PSC/ARR immediately
+    TIM6->SR &= ~BIT(0);        // clear UIF
 }

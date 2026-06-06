@@ -228,6 +228,12 @@ struct rng{
 #define RNG ((struct rng *)(0x50060800u))
 
 struct tim6{
-  volatile uint32_t CR1, CR2, DIER,SR, EGR, CNT, PSC, ARR;
+  volatile uint32_t CR1, CR2, RESERVED0, DIER,SR, EGR, RESERVED1[3], CNT, PSC, ARR;
 };
 #define TIM6 ((struct tim6 *)(0x40001000u))
+
+struct dac1{
+  volatile uint32_t CR, SWTRGR, DHR12R1, DHR12L1, DHR8R1, DHR12R2, DH12L2, DHR8R2, DHR12RD, DHR12LD, DHR8RD, DOR1, DOR2,
+                    SR, CCR, MCR, SHSR1, SHSR2, SHHR, SHRR;
+};
+#define DAC1 ((struct dac1 *)(0x40007400u))
