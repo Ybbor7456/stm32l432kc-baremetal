@@ -99,7 +99,8 @@ int main(void) {
   //uint32_t timer = 0, period = 500; // remove when removing timer_expired cond. 
   //uint32_t t = 0; static bool led_on = false;
 //  adxl345_init(cs); 
-//  tim2_init();
+//tim2_init();
+//tim6_init(); 
 //  uint8_t rng_msi = 3; 
 //  rng_init(rng_msi);
   // timeout = ((rlr +1)*prescaler)/LSI, LSI = 32kHz, prescaler = 64, timeout = 2 (roughly)
@@ -111,18 +112,23 @@ int main(void) {
 
 
   uint16_t dac_pin = PIN('A', 4);
-
-  dac_ch1_tim6_trigger_init(dac_pin);
-  dac_ch1_write_12bit(2048);      // preload first value
+  static uint16_t waveform[] = {0, 2048, 4095}; 
+  uint16_t wave_len= sizeof(waveform)/sizeof(waveform[0]); 
+  //dac_ch1_tim6_trigger_init(dac_pin);
+  //dac_ch1_write_12bit(2048);      // preload first value
+  
+  
+  dac_dma_ch1_tim6_trigger_init(dac_pin, waveform, wave_len);
 
   tim6_trgo_init(3999, 1999);
   tim6_start();
-
   printf("DAC CR: 0x%08lX\r\n", DAC1->CR);
   printf("TIM6 CR2: 0x%08lX\r\n", TIM6->CR2);
   printf("TIM6 PSC: %lu ARR: %lu\r\n", TIM6->PSC, TIM6->ARR);
 
-  while(1) {
+  while(1) { // CPU is free, DAC steps through waveforms. 
+    printf("CNDTR: %lu DOR1: %lu\r\n", DMA1_CH3->CNDTR, DAC1->DOR1);
+    //tim2_delay_ms(500);
   }
   return 0;
 }

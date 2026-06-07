@@ -12,6 +12,7 @@
 #include "bsp/board.h"
 #include "drivers/gpio.h"
 
+
 static inline void tim2_init(void){
     RCC->APB1ENR1 |= BIT(0); // enable TIM2 
     // psc = (fck_psc/Fcnt) - 1. stm32l4 4MHz MSI clock, 4/Fcnt - 1 = 79. Fcnt = 1MHz. 
@@ -153,4 +154,5 @@ static inline void tim6_trgo_init(uint32_t psc, uint32_t arr){
     TIM6->CR2 |=  (0x2u << 4);  // MMS = 010: update event as TRGO
     TIM6->EGR = BIT(0);         // load PSC/ARR immediately
     TIM6->SR &= ~BIT(0);        // clear UIF
+    TIM6->CR1 |= BIT(0);        // CEN start time
 }

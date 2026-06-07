@@ -23,10 +23,7 @@ Part 3: DAC timer-triggered output
     timer controls when DAC updates
 
 Part 4: DAC + DMA circular waveform
-    memory table automatically feeds DAC
-conf
-Part 5: ADC + DMA -> processing -> DAC + DMA
-    sampled input to generated output
+    memory table automatically feeds DAC conf
 */
 
 static inline void dac_gpio_init(uint16_t pin, uint8_t conf){
@@ -75,11 +72,35 @@ static inline void dac_trigger_select_tim6(void){
     DAC1->CR |= BIT(2); 
 }
 
+static inline void dac_dma_enable_ch1(void){
+    DAC1->CR |= BIT(12); // DMAEN1
+}
 
-static inline void dac_ch1_tim6_trigger_init(uint16_t pin){
+static inline void dac_dma3_setup(uint16_t *buf, uint16_t len){
+    RCC->AHB1ENR |= BIT(0); // clk en
+    DMA1_CH3->CCR = 0; // disable channel
+    *DMA1_CSELR = (*DMA1_CSELR & ~(0xFu << 8)) | (6u << 8); 
+
+    DMA1_CH3->CPAR = (uint32_t) &DAC1->DHR12R1; 
+    DMA1_CH3->CMAR = (uint32_t) buf; 
+    DMA1_CH3->CNDTR = len; 
+
+    DMA1_CH3->CCR = (1 << 4) | (1u << 5) | (1u << 7) | (1u << 8) | (1u <<10); 
+    /*1-4 memory to peripheral
+        5, 6circular mode
+        7 memory increment
+        8, 9 01 16-bit peripheral transfer
+        10 - 1 16-bit memory transfer
+    */
+    DMA1_CH3->CCR |= BIT(0); // enable channel 
+}
+
+static inline void dac_dma_ch1_tim6_trigger_init(uint16_t pin, uint16_t *buf, uint16_t len){
     dac_clock_enable();
     dac_gpio_init(pin, NO_PULL);
     dac_ch1_normal_mode();
     dac_trigger_select_tim6();
+    dac_dma3_setup(buf, len); 
+    dac_dma_enable_ch1(); 
     dac_enable_ch1();
 }

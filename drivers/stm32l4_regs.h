@@ -237,3 +237,6 @@ struct dac1{
                     SR, CCR, MCR, SHSR1, SHSR2, SHHR, SHRR;
 };
 #define DAC1 ((struct dac1 *)(0x40007400u))
+
+#define DMA1_CH3 ((struct dma_ch *) 0x40020030u)
+#define DMA1_CSELR ((volatile uint32_t *) 0x400200A8u)
